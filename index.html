@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Календарь записей</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Календарь записей</h1>
+  <button id="toggleAdminMode" class="mode-toggle" aria-label="Переключить режим администратора">Режим: Пользователь</button>
+
+  <!-- Кнопки навигации по месяцам -->
+  <button class="month-nav prev" aria-label="Предыдущий месяц">←</button>
+  <button class="month-nav next" aria-label="Следующий месяц">→</button>
+
+  <!-- Календарь -->
+  <div class="calendar" id="calendar"></div>
+
+  <div id="loading" class="loading" style="display: none;">
+    Загружается...
+  </div>
+
+  <!-- Модальное окно: список записей на выбранную дату -->
+  <div id="dateDetailsModal" class="modal" role="dialog" aria-labelledby="modalDateTitle" style="display: none;">
+    <div class="modal-content">
+      <h3>Записи на <span id="modalDateTitle"></span></h3>
+      <div id="dateBookingsList"></div>
+      <!-- Кнопка закрытия дня для админа -->
+      <button type="button" id="closeDayButton" style="display: none;">Закрыть день для записи</button>
+      <button type="button" id="closeDateModalBtn">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Модальное окно: запись на приём -->
+  <div id="bookingModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Запись на услугу</h3>
+      <form id="bookingForm" novalidate>
+        <div>
+          <label>Дата: <span id="selectedDateDisplay"></span></label>
+        </div>
+        <div>
+          <label for="timeSelect">Время:</label>
+          <select id="timeSelect" required>
+            <option value="">Выберите время</option>
+          </select>
+        </div>
+        <div>
+          <label for="serviceSelect">Услуга:</label>
+          <select id="serviceSelect" required>
+            <option value="">Выберите услугу</option>
+          </select>
+        </div>
+        <button type="submit">Записать</button>
+        <button type="button">Отмена</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно: время занято -->
+  <div id="busyTimeModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Время занято</h3>
+      <p>Это время уже занято. Пожалуйста, выберите другое.</p>
+      <button type="button">Закрыть</button>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
