@@ -2,70 +2,236 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Календарь записей</title>
-  <link rel="stylesheet" href="styles.css">
+  <!-- Стили (убедитесь, что путь корректный) -->
+  <link rel="stylesheet" href="./styles.css">
+  <!-- Критические стили (опционально, для быстрого отображения) -->
+  <style>
+    .loading-indicator {
+      font-family: Arial, sans-serif;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      color: #495057;
+    }
+  </style>
 </head>
 <body>
-  <h1>Календарь записей</h1>
-  <button id="toggleAdminMode" class="mode-toggle" aria-label="Переключить режим администратора">Режим: Пользователь</button>
+  <div class="container">
+    <h1>Календарь записей</h1>
 
-  <!-- Кнопки навигации по месяцам -->
-  <button class="month-nav prev" aria-label="Предыдущий месяц">←</button>
-  <button class="month-nav next" aria-label="Следующий месяц">→</button>
+    <!-- Кнопка переключения режима -->
+    <button id="toggleAdminMode" class="btn btn-primary" type="button">
+      Режим: Администратор
+    </button>
 
-  <!-- Календарь -->
-  <div class="calendar" id="calendar"></div>
+    <!-- Календарь -->
+    <div id="calendar" class="calendar"></div>
 
-  <div id="loading" class="loading" style="display: none;">
-    Загружается...
-  </div>
 
-  <!-- Модальное окно: список записей на выбранную дату -->
-  <div id="dateDetailsModal" class="modal" role="dialog" aria-labelledby="modalDateTitle" style="display: none;">
-    <div class="modal-content">
-      <h3>Записи на <span id="modalDateTitle"></span></h3>
-      <div id="dateBookingsList"></div>
-      <!-- Кнопка закрытия дня для админа -->
-      <button type="button" id="closeDayButton" style="display: none;">Закрыть день для записи</button>
-      <button type="button" id="closeDateModalBtn">Закрыть</button>
+    <!-- Админ‑панель управления записями (скрыта по умолчанию) -->
+    <div id="adminControls" class="admin-controls" style="display: none;">
+      <h3>Управление записями</h3>
+
+      <!-- Панель настройки минимального времени до записи -->
+      <div class="time-threshold-control">
+        <label for="timeThresholdInput">
+          Минимальное время до записи (мин):
+        </label>
+        <input
+          type="number"
+          id="timeThresholdInput"
+          value="60"
+          min="10"
+          max="360"
+          aria-label="Минимальное время до записи в минутах"
+        >
+        <button id="saveThresholdBtn" class="btn btn-secondary" type="button">
+          Сохранить
+        </button>
+      </div>
+
+      <!-- Список записей -->
+      <div id="bookingsList" aria-live="polite"></div>
+    </div>
+
+    <!-- Модальное окно: детали дня -->
+    <div
+      id="dateDetailsModal"
+      class="modal"
+      role="dialog"
+      aria-labelledby="modalDateTitle"
+      aria-modal="true"
+      style="display: none;"
+    >
+      <div class="modal-content">
+        <h4 id="modalDateTitle"></h4>
+        <div id="dateBookingsList"></div>
+        <button
+          type="button"
+          class="btn btn-close"
+          onclick="closeDateDetailsModal()"
+          aria-label="Закрыть окно деталей дня"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+
+    <!-- Модальное окно: новая запись -->
+    <div
+      id="bookingModal"
+      class="modal"
+      role="dialog"
+      aria-labelledby="bookingModalTitle"
+      aria-modal="true"
+      style="display: none;"
+    >
+      <div class="modal-content">
+        <h4 id="bookingModalTitle">Новая запись</h4>
+        <p id="selectedDateDisplay" aria-label="Выбранная дата"></p>
+        <select id="timeSelect" aria-label="Выберите время"></select>
+        <select id="serviceSelect" aria-label="Выберите услугу"></select>
+        <form id="bookingForm" aria-labelledby="bookingModalTitle">
+          <button type="submit" class="btn btn-primary">Записать</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick="closeBookingModal()"
+            aria-label="Отменить и закрыть окно"
+          >
+            Отмена
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно: время занято -->
+    <div
+      id="busyTimeModal"
+      class="modal"
+      role="alertdialog"
+      aria-labelledby="busyTimeTitle"
+      aria-modal="true"
+      style="display: none;"
+    >
+      <div class="modal-content">
+        <h5 id="busyTimeTitle">Это время уже занято!</h5>
+        <button
+          type="button"
+          class="btn btn-close"
+          onclick="closeBusyTimeModal()"
+          aria-label="Закрыть уведомление о занятости времени"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+
+    <!-- Индикатор загрузки -->
+    <div
+      id="loading"
+      class="loading-indicator"
+      style="display: none;"
+      role="status"
+      aria-live="assertive"
+    >
+      Загрузка...
     </div>
   </div>
 
-  <!-- Модальное окно: запись на приём -->
-  <div id="bookingModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h3>Запись на услугу</h3>
-      <form id="bookingForm" novalidate>
-        <div>
-          <label>Дата: <span id="selectedDateDisplay"></span></label>
-        </div>
-        <div>
-          <label for="timeSelect">Время:</label>
-          <select id="timeSelect" required>
-            <option value="">Выберите время</option>
-          </select>
-        </div>
-        <div>
-          <label for="serviceSelect">Услуга:</label>
-          <select id="serviceSelect" required>
-            <option value="">Выберите услугу</option>
-          </select>
-        </div>
-        <button type="submit">Записать</button>
-        <button type="button">Отмена</button>
-      </form>
-    </div>
-  </div>
+  <!-- Подключение JS‑модулей (порядок важен!) -->
+  <script type="module">
+    // 1. Основные элементы DOM
+    import { elements } from './src/dom/elements.js';
 
-  <!-- Модальное окно: время занято -->
-  <div id="busyTimeModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h3>Время занято</h3>
-      <p>Это время уже занято. Пожалуйста, выберите другое.</p>
-      <button type="button">Закрыть</button>
-    </div>
-  </div>
+    // 2. Утилиты календаря (формат даты, временные слоты и т.д.)
+    import { formatDate, services, timeSlots } from './src/calendar/utils.js';
 
-  <script type="module" src="./app.js"></script>
+    // 3. Работа с Firebase (загрузка/сохранение записей)
+    import { 
+      loadBookingsFromFirebase,
+      saveBooking,
+      isTimeBusy,
+      bookings
+    } from './src/firebase/firestore.js';
+
+    // 4. Логика календаря (рендеринг, обновление)
+    import {
+      renderCalendar,
+      updateCalendarVisuals,
+     
+    } from './src/calendar/events.js';
+
+    // 5. Состояние приложения (режим администратора)
+    import { isAdminMode, toggleAdminMode } from './src/calendar/state.js';
+
+    // 6. Работа с формами (сброс, обновление слотов, отправка)
+    import {
+      resetBookingForm,
+      updateTimeSlots,
+      openBookingModal,
+      setupBookingFormHandler
+    } from './src/dom/forms.js';
+
+    // 7. Работа с модальными окнами
+    import {
+      closeDateDetailsModal,
+      closeBookingModal,
+      closeBusyTimeModal
+    } from './src/dom/modals.js';
+
+    // --- Инициализация приложения ---
+   async function initApp() {
+  // Показываем индикатор загрузки (с проверкой)
+  if (elements.loading) {
+    elements.loading.style.display = 'block';
+  } else {
+    console.warn('Элемент #loading не найден в DOM');
+  }
+      try {
+        // Загружаем данные из Firebase
+        await loadBookingsFromFirebase();
+
+        // Рендерим календарь
+        renderCalendar();
+        updateCalendarVisuals();
+
+        // Настраиваем форму записи
+        resetBookingForm();
+        setupBookingFormHandler();
+
+        // Подключаем обработчик кнопки переключения режима
+        elements.toggleAdminMode?.addEventListener('click', () => {
+          toggleAdminMode();
+          // Обновляем визуалы календаря при смене режима
+          updateCalendarVisuals();
+        });
+
+        // Подключаем кнопку сохранения порога времени
+        elements.saveThresholdBtn?.addEventListener('click', () => {
+          const threshold = parseInt(elements.timeThresholdInput?.value, 10);
+          if (!isNaN(threshold) && threshold >= 10) {
+            // Здесь должна быть логика сохранения порога (например, в Firebase)
+            alert(`Порог времени обновлён: ${threshold} мин.`);
+          } else {
+            alert('Введите корректное значение (от 10 до 360).');
+          }
+        });
+
+      } catch (error) {
+        console.error('Ошибка при инициализации приложения:', error);
+        alert('Не удалось загрузить данные. Проверьте подключение к интернету.');
+      } finally {
+        // Скрываем индикатор загрузки
+        elements.loading.style.display = 'none';
+      }
+    }
+
+    // Запускаем инициализацию
+    initApp();
+  </script>
 </body>
 </html>

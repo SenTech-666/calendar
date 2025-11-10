@@ -1,4 +1,4 @@
-// Инициализация Firebase
+// Импорт модулей Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import {
   getFirestore,
@@ -9,10 +9,12 @@ import {
   Timestamp,
   deleteDoc,
   query,
-  where
+  where,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
 
+// Конфигурация Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
   authDomain: "calendar-666-5744f.firebaseapp.com",
@@ -23,32 +25,68 @@ const firebaseConfig = {
   measurementId: "G-2ETMLYKBJS"
 };
 
+// Инициализация приложения
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
+const analytics = getAnalytics(app);
 
-// Кэшированные DOM-элементы
-const elements = {
-  calendar: document.getElementById('calendar'),
-  toggleAdminMode: document.getElementById('toggleAdminMode'),
-  dateDetailsModal: document.getElementById('dateDetailsModal'),
-  bookingModal: document.getElementById('bookingModal'),
-  busyTimeModal: document.getElementById('busyTimeModal'),
-  loading: document.getElementById('loading')
-};
+// Элементы DOM
+const elements = {};
+
+function initElements() {
+  const selectors = {
+    calendar: '#calendar',
+    toggleAdminMode: '#toggleAdminMode',
+    loading: '#loading',
+    adminControls: '#adminControls',
+    timeThresholdInput: '#timeThresholdInput',
+    saveThresholdBtn: '#saveThresholdBtn',
+    bookingsList: '#bookingsList',
+    selectedDateDisplay: '#selectedDateDisplay',
+    timeSelect: '#timeSelect',
+    serviceSelect: '#serviceSelect',
+    bookingForm: '#bookingForm',
+    dateDetailsModal: '#dateDetailsModal',
+    modalDateTitle: '#modalDateTitle',
+    dateBookingsList: '#dateBookingsList',
+    bookingModal: '#bookingModal',
+    busyTimeModal: '#busyTimeModal'
+  };
+
+  Object.keys(selectors).forEach(key => {
+    const el = document.querySelector(selectors[key]);
+    if (!el) console.error(`Элемент ${selectors[key]} не найден!`);
+    elements[key] = el;
+  });
+}
 
 // Глобальные переменные
 let bookings = [];
 const services = ['Консультация', 'Диагностика', 'Ремонт', 'Настройка'];
 const timeSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00'];
 let isAdminMode = true;
+let adminTimeThreshold = 60; // минут
 
 // Преобразование Timestamp в строку YYYY-MM-DD
 function timestampToString(timestamp) {
   if (timestamp instanceof Timestamp) {
     return timestamp.toDate().toISOString().split('T')[0];
+  } else if (timestamp instanceof Date) {
+    return timestamp.toISOString().split('T')[0];
+  } else if (typeof timestamp === 'string') {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRegex.test(timestamp)) {
+      return timestamp;
+    }
+    try {
+      return new Date(timestamp).toISOString().split('T')[0];
+    } catch (e) {
+      console.error('Не удалось преобразовать строку в дату:', timestamp);
+      return '';
+    }
   }
-  return timestamp;
+  console.error('Неподдерживаемый тип даты:', timestamp);
+  return '';
 }
 
 // Загрузка записей из Firestore
@@ -61,12 +99,17 @@ async function loadBookingsFromFirebase() {
     bookings = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      data.id = doc.id; // Сохраняем ID документа
+      data.id = doc.id;
       data.date = timestampToString(data.date);
+
+      // Пропускаем записи без даты
+      if (!data.date || data.date === '') {
+        console.warn('Пропущена запись без даты:', data);
+        return;
+      }
+
       bookings.push(data);
     });
-
-    console.log('Данные загружены из Firestore:', bookings);
   } catch (error) {
     console.error('Ошибка загрузки из Firestore:', error);
     alert('Не удалось загрузить данные. Проверьте подключение к интернету.');
@@ -78,29 +121,33 @@ async function loadBookingsFromFirebase() {
 // Сохранение записи в Firestore
 async function saveBooking(booking) {
   try {
+    elements.loading.style.display = 'block';
     const bookingsCollection = collection(db, 'bookings');
     await addDoc(bookingsCollection, booking);
-    console.log('Запись сохранена:', booking);
   } catch (error) {
     console.error('Ошибка сохранения в Firestore:', error);
     alert('Не удалось сохранить запись. Попробуйте ещё раз.');
+  } finally {
+    elements.loading.style.display = 'none';
   }
 }
 
 // Удаление записи из Firestore
 async function deleteBooking(bookingId) {
   try {
+    elements.loading.style.display = 'block';
     await deleteDoc(doc(db, 'bookings', bookingId));
-    console.log('Запись удалена:', bookingId);
-    await loadBookingsFromFirebase(); // Обновляем данные
+    await loadBookingsFromFirebase();
     setupCalendar();
   } catch (error) {
     console.error('Ошибка удаления записи:', error);
     alert('Не удалось удалить запись.');
+  } finally {
+    elements.loading.style.display = 'none';
   }
 }
 
-// Проверка занятости времени (с запросом в Firestore)
+// Проверка занятости времени
 async function isTimeBusy(date, time) {
   try {
     const q = query(
@@ -116,9 +163,14 @@ async function isTimeBusy(date, time) {
   }
 }
 
-// Обновление текста кнопки режима
+// Обновление кнопки режима
 function updateModeButtonText() {
-  elements.toggleAdminMode.textContent = `Режим: ${isAdminMode ? 'Администратор' : 'Пользователь'}`;
+  if (elements.toggleAdminMode) {
+    elements.toggleAdminMode.textContent = `Режим: ${isAdminMode ? 'Администратор' : 'Пользователь'}`;
+  }
+  if (elements.adminControls) {
+    elements.adminControls.style.display = isAdminMode ? 'block' : 'none';
+  }
 }
 
 // Проверка, занят ли день полностью
@@ -128,211 +180,7 @@ function isDayFullyBooked(dateStr) {
   return bookedSlots >= availableSlots;
 }
 
-// Форматирование даты для отображения
-function formatDate(dateString) {
-  return new Intl.DateTimeFormat('ru-RU', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric'
-  }).format(new Date(dateString));
-}
-
-// Переключение режима (админ/пользователь)
-elements.toggleAdminMode.addEventListener('click', async () => {
-  isAdminMode = !isAdminMode;
-  updateModeButtonText();
-  await setupCalendar();
-});
-
-// Рендеринг календаря
-function renderCalendar() {
-  elements.calendar.innerHTML = '';
-
-  const year = 2025;
-  const month = 10;
-  const daysInMonth = 30;
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayCell = document.createElement('div');
-    dayCell.className = 'day-cell';
-    dayCell.dataset.date = dateStr;
-    dayCell.textContent = day;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cellDate = new Date(dateStr);
-    if (cellDate < today) {
-      dayCell.classList.add('past');
-      dayCell.style.pointerEvents = 'none';
-    }
-
-    elements.calendar.appendChild(dayCell);
-  }
-}
-
-// Открытие модального окна с записями на день
-function openDateDetailsModal(dateStr) {
-  const title = document.getElementById('modalDateTitle');
-  const list = document.getElementById('dateBookingsList');
-
-  title.textContent = formatDate(dateStr);
-  list.innerHTML = '';
-
-  const dayBookings = bookings.filter(b => b.date === dateStr);
-
-  if (dayBookings.length === 0) {
-    list.innerHTML = '<p>Нет записей на этот день.</p>';
-  } else {
-    dayBookings.forEach(booking => {
-      const item = document.createElement('div');
-      item.className = 'booking-item';
-      item.innerHTML = `
-        <div class="booking-time">${booking.time}</div>
-        <div class="booking-service">${booking.service}</div>
-        ${isAdminMode ? `<button class="delete-btn" data-id="${booking.id}">Удалить</button>` : ''}
-      `;
-      list.appendChild(item);
-    });
-
-    // Обработчик удаления (для админа)
-    if (isAdminMode) {
-      list.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          deleteBooking(e.target.dataset.id);
-        });
-      });
-    }
-  }
-
-  elements.dateDetailsModal.style.display = 'flex';
-}
-
-// Закрытие модального окна записей
-function closeDateDetailsModal() {
-  elements.dateDetailsModal.style.display = 'none';
-}
-
-// Открытие формы записи
-function openBookingModal(date) {
-  const selectedDateDisplay = document.getElementById('selectedDateDisplay');
-
-  // Сохраняем исходную дату в dataset (в формате YYYY-MM-DD)
-  selectedDateDisplay.dataset.rawDate = date;
-  selectedDateDisplay.textContent = formatDate(date);
-
-  const timeSelect = document.getElementById('timeSelect');
-  const serviceSelect = document.getElementById('serviceSelect');
-
-  // Очищаем и заполняем выпадающие списки
-  timeSelect.value = '';
-  serviceSelect.value = '';
-  populateSelect(timeSelect, timeSlots);
-  populateSelect(serviceSelect, services);
-
-
-  elements.bookingModal.style.display = 'flex';
-}
-
-// Заполнение выпадающих списков
-function populateSelect(selectElement, options) {
-  selectElement.innerHTML = '<option value="">Выберите время</option>';
-  options.forEach(option => {
-    const opt = document.createElement('option');
-    opt.value = option;
-    opt.textContent = option;
-    selectElement.appendChild(opt);
-  });
-}
-
-// Проверка занятости времени при выборе (с запросом в Firestore)
-document.getElementById('timeSelect')?.addEventListener('change', async () => {
-  const date = document.getElementById('selectedDateDisplay').dataset.rawDate;
-  const time = document.getElementById('timeSelect').value;
-
-
-  if (!date || !time) return;
-
-  try {
-    const isBusy = await isTimeBusy(date, time);
-    if (isBusy) {
-      showBusyTimeModal();
-      document.getElementById('timeSelect').value = '';
-    }
-  } catch (error) {
-    console.error('Ошибка проверки занятости времени:', error);
-  }
-});
-
-// Отправка формы записи
-document.getElementById('bookingForm')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const selectedDateDisplay = document.getElementById('selectedDateDisplay');
-  const timeSelect = document.getElementById('timeSelect');
-  const serviceSelect = document.getElementById('serviceSelect');
-
-
-  // Проверка существования элементов
-  if (!selectedDateDisplay || !timeSelect || !serviceSelect) {
-    alert('Элементы формы не найдены!');
-    return;
-  }
-
-  const date = selectedDateDisplay.dataset.rawDate; // Исходная дата в формате YYYY-MM-DD
-  const time = timeSelect.value;
-  const service = serviceSelect.value;
-
-
-  // Валидация: проверяем заполнение полей
-  if (!date || !time || !service) {
-    alert('Заполните все поля!');
-    return;
-  }
-
-  // Проверяем занятость времени через Firestore
-  const isBusy = await isTimeBusy(date, time);
-  if (isBusy) {
-    showBusyTimeModal();
-    return;
-  }
-
-  // Создаем новую запись
-  const newBooking = {
-    date: date,
-    time: time,
-    service: service,
-    userId: isAdminMode ? 'admin' : 'user_' + Date.now(),
-    createdAt: Timestamp.now()
-  };
-
-  try {
-    await saveBooking(newBooking);
-    await loadBookingsFromFirebase(); // Обновляем данные из Firestore
-    setupCalendar();
-    closeBookingModal();
-  } catch (error) {
-    console.error('Ошибка сохранения записи:', error);
-    alert('Не удалось сохранить запись. Попробуйте ещё раз.');
-  }
-});
-
-// Закрытие формы записи
-function closeBookingModal() {
-  elements.bookingModal.style.display = 'none';
-}
-
-// Открытие модального окна «Время занято»
-function showBusyTimeModal() {
-  elements.busyTimeModal.style.display = 'flex';
-}
-
-// Закрытие модального окна «Время занято»
-function closeBusyTimeModal() {
-  elements.busyTimeModal.style.display = 'none';
-}
-
-// Получение уровня занятости дня (для подсветки)
+// Получение уровня занятости дня
 function getBookingLevel(dateStr) {
   const bookedCount = bookings.filter(b => b.date === dateStr).length;
   const totalSlots = timeSlots.length;
@@ -340,8 +188,148 @@ function getBookingLevel(dateStr) {
   if (bookedCount === 0) return 0;
   if (bookedCount >= totalSlots) return 'full';
 
-
   return Math.min(4, Math.ceil(bookedCount / (totalSlots / 4)));
+}
+
+// Форматирование даты для отображения
+function formatDate(dateString) {
+  if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
+    console.warn('Некорректная дата:', dateString);
+    return 'Неизвестная дата';
+  }
+
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(dateString)) {
+    console.warn('Неверный формат даты:', dateString);
+    return 'Неверная дата';
+  }
+
+  try {
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).format(new Date(dateString));
+  } catch (error) {
+    console.error('Ошибка форматирования даты:', error, dateString);
+    return 'Ошибка даты';
+  }
+}
+
+// Открытие модального окна для деталей даты (админ)
+function openDateDetailsModal(dateStr) {
+  elements.modalDateTitle.textContent = formatDate(dateStr);
+  renderAdminBookings(dateStr);
+  elements.dateDetailsModal.style.display = 'block';
+}
+
+// Рендеринг записей для выбранной даты в админ‑режиме
+function renderAdminBookings(dateStr) {
+  const bookingsList = elements.dateBookingsList;
+  bookingsList.innerHTML = '';
+
+
+  const filteredBookings = bookings.filter(b => b.date === dateStr);
+
+  filteredBookings.forEach(booking => {
+    const item = document.createElement('div');
+    item.className = 'booking-item';
+
+
+    const formattedDate = booking.date
+      ? formatDate(booking.date)
+      : 'Дата отсутствует';
+
+    item.innerHTML = `
+      <div class="booking-info">
+        <strong>Дата:</strong> ${formattedDate}<br>
+        <strong>Время:</strong> ${booking.time}<br>
+        <strong>Услуга:</strong> ${booking.service}
+      </div>
+      <button class="delete-btn btn btn-danger" data-id="${booking.id}" aria-label="Удалить запись">Удалить</button>
+    `;
+
+
+    item.querySelector('.delete-btn').addEventListener('click', () => {
+      deleteBooking(booking.id);
+    });
+
+    bookingsList.appendChild(item);
+  });
+
+  if (filteredBookings.length === 0) {
+    bookingsList.innerHTML = '<p>Нет записей на эту дату.</p>';
+  }
+}
+
+// Закрытие модальных окон
+function closeModals() {
+  if (elements.bookingModal) {
+    elements.bookingModal.style.display = 'none';
+  }
+  if (elements.dateDetailsModal) {
+    elements.dateDetailsModal.style.display = 'none';
+  }
+  if (elements.busyTimeModal) {
+    elements.busyTimeModal.style.display = 'none';
+  }
+
+  // Сбрасываем форму записи при закрытии
+  resetBookingForm();
+}
+
+// Сброс формы записи
+function resetBookingForm() {
+  if (elements.timeSelect) {
+    elements.timeSelect.innerHTML = '';
+  }
+  if (elements.serviceSelect) {
+    elements.serviceSelect.innerHTML = '';
+    services.forEach(service => {
+      const option = document.createElement('option');
+      option.value = service;
+      option.textContent = service;
+      elements.serviceSelect.appendChild(option);
+    });
+  }
+}
+
+// Обработчики закрытия модальных окон
+document.addEventListener('click', (e) => {
+  // Закрываем по клику на оверлей модального окна
+  if (
+    e.target === elements.bookingModal ||
+    e.target === elements.dateDetailsModal ||
+    e.target === elements.busyTimeModal
+  ) {
+    closeModals();
+  }
+
+  // Закрываем по клику на кнопку закрытия внутри модального окна (класс .btn-close)
+  if (e.target.classList.contains('btn-close')) {
+    closeModals();
+  }
+});
+
+// Закрытие по клавише Esc
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' || e.keyCode === 27) {
+    closeModals();
+  }
+});
+
+
+// Функции закрытия конкретных модальных окон (для onclick в HTML)
+function closeDateDetailsModal() {
+  closeModals();
+}
+
+function closeBookingModal() {
+  closeModals();
+}
+
+function closeBusyTimeModal() {
+  closeModals();
 }
 
 // Обновление визуальных состояний календаря
@@ -351,16 +339,19 @@ function updateCalendarVisuals() {
   dayCells.forEach(cell => {
     const dateStr = cell.dataset.date;
 
-
-    // Сбрасываем все классы подсветки
+    // Сбрасываем классы уровней занятости (1–4)
     for (let i = 1; i <= 4; i++) {
       cell.classList.remove(`bookings-${i}`);
     }
+
+    // Сбрасываем классы полной занятости
     cell.classList.remove('fully-booked-admin', 'fully-booked');
 
-    cell.style.pointerEvents = 'auto'; // Возвращаем кликабельность
 
+    // Разрешаем клики по ячейке
+    cell.style.pointerEvents = 'auto';
 
+    // Применяем стили в зависимости от режима
     if (isAdminMode) {
       const level = getBookingLevel(dateStr);
       if (level === 'full') {
@@ -371,64 +362,224 @@ function updateCalendarVisuals() {
     } else {
       if (isDayFullyBooked(dateStr)) {
         cell.classList.add('fully-booked');
-        cell.style.pointerEvents = 'none'; // Блокируем клик
+        cell.style.pointerEvents = 'none'; // Блокируем клики
       }
-    }
-
-    // Обновляем обработчики кликов
-    cell.removeEventListener('click', cell.clickHandler);
-    if (!cell.classList.contains('fully-booked') && !cell.classList.contains('past')) {
-      cell.clickHandler = () => {
-        if (isAdminMode) {
-          openDateDetailsModal(dateStr);
-        } else {
-          openBookingModal(dateStr);
-        }
-      };
-      cell.addEventListener('click', cell.clickHandler);
     }
   });
 }
 
-// Настройка обработчиков кликов для ячеек календаря
-function setupCalendarClickHandlers() {
+// Настройка календаря (загрузка данных + рендеринг)
+async function setupCalendar() {
+  await loadBookingsFromFirebase();
+  renderCalendar();
   updateCalendarVisuals();
 }
 
-// Инициализация календаря
-async function setupCalendar() {
+// Обработка отправки формы записи
+elements.bookingForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const date = elements.selectedDateDisplay.textContent;
+  const time = elements.timeSelect.value;
+  const service = elements.serviceSelect.value;
+
+  // Валидация полей
+  if (!date || !time || !service) {
+    alert('Пожалуйста, заполните все поля формы.');
+    return;
+  }
+
+  // Проверка занятости времени
+  const isBusy = await isTimeBusy(date, time);
+  if (isBusy) {
+    elements.busyTimeModal.style.display = 'block';
+    return;
+  }
+
+  // Создание записи
+  const booking = {
+    date: date,
+    time: time,
+    service: service,
+    userId: 'guest-' + Date.now(), // Временный ID для гостей
+    createdAt: Timestamp.now()
+  };
+
   try {
-    await loadBookingsFromFirebase();
-    renderCalendar();
-    setupCalendarClickHandlers();
+    await saveBooking(booking);
+    alert('Запись успешно создана!');
+    closeModals();
+    await setupCalendar();
   } catch (error) {
-    console.error('Ошибка инициализации календаря:', error);
-    alert('Не удалось загрузить данные. Проверьте подключение к интернету.');
+    console.error('Ошибка при создании записи:', error);
+    alert('Не удалось создать запись. Попробуйте ещё раз.');
+  }
+});
+
+// Обновление списка доступных временных слотов при выборе даты
+function updateTimeSlots(dateStr) {
+  const availableSlots = [];
+
+  for (const slot of timeSlots) {
+    const isBusy = bookings.some(b => b.date === dateStr && b.time === slot);
+    if (!isBusy) {
+      availableSlots.push(slot);
+    }
+  }
+
+  elements.timeSelect.innerHTML = '';
+  if (availableSlots.length === 0) {
+    elements.timeSelect.insertAdjacentHTML('beforeend', '<option>Нет свободных слотов</option>');
+  } else {
+    availableSlots.forEach(slot => {
+      const option = document.createElement('option');
+      option.value = slot;
+      option.textContent = slot;
+      elements.timeSelect.appendChild(option);
+    });
   }
 }
 
-// Инициализация при загрузке страницы
-window.addEventListener('load', async () => {
+// Открытие модального окна записи
+function openBookingModal(dateStr) {
+  elements.selectedDateDisplay.textContent = formatDate(dateStr);
+  updateTimeSlots(dateStr);
+  elements.bookingModal.style.display = 'block';
+}
+
+// Рендеринг календаря (упрощённый вариант)
+function renderCalendar() {
+  const calendar = elements.calendar;
+  calendar.innerHTML = '';
+
+  // Получаем текущий месяц и год
+    const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  // Создаём заголовок месяца
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'month-header';
+  monthHeader.textContent = new Intl.DateTimeFormat('ru-RU', {
+    month: 'long',
+    year: 'numeric'
+  }).format(today);
+  calendar.appendChild(monthHeader);
+
+  // Создаём сетку дней
+  const daysGrid = document.createElement('div');
+  daysGrid.className = 'days-grid';
+
+  // Определяем первый день месяца (0 — воскресенье, 6 — суббота)
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const startingDay = firstDay.getDay();
+
+
+  // Заполняем пустые ячейки до первого дня месяца
+  for (let i = 0; i < startingDay; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'day-cell empty';
+    daysGrid.appendChild(emptyCell);
+  }
+
+  // Количество дней в месяце
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+
+  // Создаём ячейки для каждого дня
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayCell = document.createElement('div');
+    dayCell.className = 'day-cell';
+    
+    // Формируем дату в формате YYYY-MM-DD
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    dayCell.dataset.date = dateStr;
+    dayCell.textContent = day;
+
+    // Проверяем занятость дня
+    if (isDayFullyBooked(dateStr)) {
+      dayCell.classList.add('fully-booked');
+      if (!isAdminMode) {
+        dayCell.style.pointerEvents = 'none';
+      }
+    }
+
+    // Обработчик клика по дню
+    dayCell.addEventListener('click', () => {
+      if (isAdminMode) {
+        openDateDetailsModal(dateStr);
+      } else {
+        if (!dayCell.classList.contains('fully-booked')) {
+          openBookingModal(dateStr);
+        }
+      }
+    });
+
+    daysGrid.appendChild(dayCell);
+  }
+
+  calendar.appendChild(daysGrid);
+}
+
+// Инициализация приложения
+document.addEventListener('DOMContentLoaded', async () => {
+  initElements();
+
+  // Обработчики для админ‑панели
+  if (elements.saveThresholdBtn) {
+    elements.saveThresholdBtn.addEventListener('click', () => {
+      const inputValue = elements.timeThresholdInput.value;
+      if (inputValue && !isNaN(inputValue) && parseInt(inputValue) > 0) {
+        adminTimeThreshold = parseInt(inputValue);
+        alert(`Пороговое время обновлено: ${adminTimeThreshold} мин.`);
+      } else {
+        alert('Введите корректное положительное число минут.');
+      }
+    });
+  }
+
+  if (elements.toggleAdminMode) {
+    elements.toggleAdminMode.addEventListener('click', async () => {
+      isAdminMode = !isAdminMode;
+      updateModeButtonText();
+      await setupCalendar();
+    });
+  }
+
+  // Запуск календаря
   await setupCalendar();
 });
 
-// Обработчики закрытия модальных окон по клику вне содержимого
-elements.dateDetailsModal?.addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeDateDetailsModal();
-});
+// Дополнительные утилиты
 
-elements.bookingModal?.addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeBookingModal();
-});
-
-elements.busyTimeModal?.addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeBusyTimeModal();
-});
-
-// Дополнительная функция: подтверждение удаления записи
-async function confirmDeleteBooking(bookingId) {
-  if (!confirm('Вы уверены, что хотите удалить эту запись?')) {
-    return;
-  }
-  await deleteBooking(bookingId);
+// Функция для проверки валидности даты
+function isValidDateString(dateStr) {
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  return regex.test(dateStr);
 }
+
+// Функция для получения текущей даты в формате YYYY-MM-DD
+function getCurrentDateString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Функция для проверки, является ли дата сегодняшней
+function isToday(dateStr) {
+  return dateStr === getCurrentDateString();
+}
+
+// Функция для подсветки текущей даты (опционально)
+function highlightToday() {
+  const todayStr = getCurrentDateString();
+  const todayCell = document.querySelector(`.day-cell[data-date="${todayStr}"]`);
+  if (todayCell) {
+    todayCell.classList.add('today');
+  }
+}
+
+// Добавляем вызов подсветки сегодня после рендеринга календаря
+
+  // ... (предыдущий код функции renderCalendar)
+
+
