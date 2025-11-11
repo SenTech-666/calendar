@@ -2,6 +2,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebas
 import { getFirestore } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
 
+
+// /src/firebase/firebaseConfig.js
+
+
+
 const firebaseConfig = {
   apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
   authDomain: "calendar-666-5744f.firebaseapp.com",
@@ -13,7 +18,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+export const firestore = getFirestore(app);
+
 const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 export { app, db, analytics };
+ // Инициализация Firebase
+firebase.initializeApp(firebaseConfig);
+

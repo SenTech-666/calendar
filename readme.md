@@ -1,0 +1,22 @@
+структура 
+ /src
+   /calendar
+     events.js
+     mode.js
+     modal.js
+     render.js
+     setup.js
+     state.js
+     utils.js
+   /dom
+    elemets.js
+    forms.js
+    modals.js
+   /firebase
+    firebaseConfig.js
+    firestore.js
+   /utils
+    dateUtils.js
+  main.js
+index.html
+stles.css

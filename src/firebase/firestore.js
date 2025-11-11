@@ -1,87 +1,113 @@
-import { elements } from '../dom/elements.js';
-import { db } from './firebaseConfig.js';
-import { 
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+import {
   collection,
-  getDocs,
   addDoc,
-  doc,
-  Timestamp,
-  deleteDoc,
+  getDocs,
   query,
-  where
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-import { timestampToString } from '../utils/dateUtils.js';
+  where,
+  deleteDoc,
+  doc,
+  updateDoc
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 
-let bookings = [];
 
-export async function loadBookingsFromFirebase() {
-  try {
-    elements.loading.style.display = 'block';
-    const bookingsCollection = collection(db, 'bookings');
-    const querySnapshot = await getDocs(bookingsCollection);
+const firebaseConfig = {
+  apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
+  authDomain: "calendar-666-5744f.firebaseapp.com",
+  projectId: "calendar-666-5744f",
+  storageBucket: "calendar-666-5744f.firebasestorage.app",
+  messagingSenderId: "665606748855",
+  appId: "1:665606748855:web:5e4a2865b1f26494cf2b32",
+  measurementId: "G-2ETMLYKBJS"
+};
 
-    bookings = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      data.id = doc.id;
-      data.date = timestampToString(data.date);
+let app;
+let firestore;
 
-      if (!data.date || data.date === '') {
-        console.warn('Пропущена запись без даты:', data);
-        return;
-      }
 
-      bookings.push(data);
-    });
-  } catch (error) {
-    console.error('Ошибка загрузки из Firestore:', error);
-    alert('Не удалось загрузить данные. Проверьте подключение к интернету.');
-  } finally {
-    elements.loading.style.display = 'none';
-  }
+try {
+  app = initializeApp(firebaseConfig);
+  firestore = getFirestore(app);
+  console.log('Firebase инициализирован успешно');
+  
+  // Экспортируем в глобальное пространство для доступа из других модулей
+  window.FIREBASE = { app, firestore };
+} catch (error) {
+  console.error('Ошибка инициализации Firebase:', error);
 }
 
-export async function saveBooking(booking) {
-  try {
-    elements.loading.style.display = 'block';
-    const bookingsCollection = collection(db, 'bookings');
-    await addDoc(bookingsCollection, booking);
-  } catch (error) {
-    console.error('Ошибка сохранения в Firestore:', error);
-    alert('Не удалось сохранить запись. Попробуйте ещё раз.');
-  } finally {
-    elements.loading.style.display = 'none';
-  }
-}
 
-export async function deleteBooking(bookingId) {
+/**
+ * Получение всех записей из Firestore
+ */
+export const getBookings = async () => {
   try {
-    elements.loading.style.display = 'block';
-    await deleteDoc(doc(db, 'bookings', bookingId));
-    await loadBookingsFromFirebase();
-    setupCalendar();
+    const bookingsRef = collection(firestore, 'bookings');
+    const snapshot = await getDocs(bookingsRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('Ошибка удаления записи:', error);
-    alert('Не удалось удалить запись.');
-  } finally {
-    elements.loading.style.display = 'none';
+    console.error('Ошибка получения записей из Firestore:', error);
+    throw error;
   }
-}
+};
 
-export async function isTimeBusy(date, time) {
+/**
+ * Добавление новой записи
+ */
+export const addBooking = async (booking) => {
+  try {
+    const bookingsRef = collection(firestore, 'bookings');
+    await addDoc(bookingsRef, booking);
+  } catch (error) {
+    console.error('Ошибка добавления записи в Firestore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Удаление записи по дате и времени
+ */
+export const removeBooking = async (date, time) => {
   try {
     const q = query(
-      collection(db, 'bookings'),
+      collection(firestore, 'bookings'),
       where('date', '==', date),
       where('time', '==', time)
     );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
+    const snapshot = await getDocs(q);
+    snapshot.forEach(doc => deleteDoc(doc.ref));
   } catch (error) {
-    console.error('Ошибка проверки занятости:', error);
-    return false;
+    console.error('Ошибка удаления записи из Firestore:', error);
+    throw error;
   }
-}
+};
 
-// Экспортируем bookings для доступа извне
-export { bookings };
+/**
+ * Обновление записи
+ */
+export const updateBooking = async (id, updates) => {
+  try {
+    const bookingRef = doc(firestore, 'bookings', id);
+    await updateDoc(bookingRef, updates);
+  } catch (error) {
+    console.error('Ошибка обновления записи в Firestore:', error);
+    throw error;
+  }
+};
+
+/**
+ * Удаление записи по ID
+ */
+export const deleteBooking = async (id) => {
+  try {
+    const bookingRef = doc(firestore, 'bookings', id);
+    await deleteDoc(bookingRef);
+  } catch (error) {
+    console.error('Ошибка удаления записи по ID из Firestore:', error);
+    throw error;
+  }
+};
+
+// Экспорт основных объектов Firebase
+export { app, firestore };

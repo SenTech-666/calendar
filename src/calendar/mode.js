@@ -1,11 +1,33 @@
-import { elements } from '../dom/elements.js';
-import { isAdminMode } from './state.js';
+import { updateState, getState } from './state.js';
+import { $ } from '../dom/elements.js';
+import { renderCalendar } from './render.js';
 
-export function updateModeButtonText() {
-  if (elements.toggleAdminMode) {
-    elements.toggleAdminMode.textContent = `Режим: ${isAdminMode ? 'Администратор' : 'Пользователь'}`;
+export const toggleMode = () => {
+  const isAdmin = !getState().isAdminMode;
+  updateState({ isAdminMode: isAdmin });
+
+  const btn = $('#toggleModeBtn');
+  if (btn) {
+    btn.textContent = isAdmin ? 'Режим администратора' : 'Режим пользователя';
+      if (isAdmin) {
+      btn.classList.remove('btn-user');
+      btn.classList.add('btn-admin');
+    } else {
+      btn.classList.remove('btn-admin');
+      btn.classList.add('btn-user');
+    }
   }
-  if (elements.adminControls) {
-    elements.adminControls.style.display = isAdminMode ? 'block' : 'none';
+
+
+  renderCalendar(); // Перерисовка календаря
+};
+
+// Инициализация обработчика
+export const initModeToggle = () => {
+  const btn = $('#toggleModeBtn');
+  if (btn) {
+    btn.addEventListener('click', toggleMode);
+  } else {
+    console.error('Кнопка #toggleModeBtn не найдена');
   }
-}
+};

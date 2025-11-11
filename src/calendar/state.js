@@ -1,25 +1,74 @@
-// Глобальные переменные состояния
-export let isAdminMode = true;
-export let adminTimeThreshold = 60; // минут
-// ./src/calendar/state.js
+import { formatDate } from '../utils/dateUtils.js';
 
-// Текущее состояние режима
+// Состояние календаря
+export const calendarState = {
+  currentMonth: new Date().getMonth(), // 0–11
+  currentYear: new Date().getFullYear(),
+  selectedDate: null,
+  bookings: [],
+  isAdminMode: false
+};
 
+// Получает текущую дату как объект Date
+export const getCurrentDate = () => {
+  return new Date(calendarState.currentYear, calendarState.currentMonth, 1);
+};
 
-/**
- * Переключает режим администратора
- */
-export function toggleAdminMode() {
-  isAdminMode = !isAdminMode;
-  console.log('Режим администратора:', isAdminMode ? 'ВКЛ' : 'ВЫКЛ');
-  // Здесь можно добавить логику обновления интерфейса
-}
+// Устанавливает новый месяц/год
+export const setCurrentMonthYear = (year, month) => {
+  calendarState.currentYear = year;
+  calendarState.currentMonth = month;
+};
 
-/**
- * Возвращает текущий режим
- * @returns {boolean}
- */
-export function getAdminMode() {
-  return isAdminMode;
-}
+// Переход к следующему месяцу
+export const nextMonth = () => {
+  let { currentYear, currentMonth } = calendarState;
+  if (currentMonth === 11) {
+    currentYear++;
+    currentMonth = 0;
+  } else {
+    currentMonth++;
+  }
+  setCurrentMonthYear(currentYear, currentMonth);
+};
 
+// Переход к предыдущему месяцу
+export const prevMonth = () => {
+  let { currentYear, currentMonth } = calendarState;
+  if (currentMonth === 0) {
+    currentYear--;
+    currentMonth = 11;
+  } else {
+    currentMonth--;
+  }
+  setCurrentMonthYear(currentYear, currentMonth);
+};
+
+// Остальные функции
+export const setSelectedDate = (date) => {
+  calendarState.selectedDate = date;
+};
+
+export const updateBookings = (bookings) => {
+  calendarState.bookings = bookings;
+};
+
+export const updateState = (newState) => {
+  Object.assign(calendarState, newState);
+};
+
+export const getState = () => calendarState;
+
+export const getBookingsForDate = (date) => {
+  const dateStr = formatDate(date);
+  return calendarState.bookings.filter(booking => booking.date === dateStr);
+};
+
+// Новые функции для управления записями
+export const addBookingToState = (booking) => {
+  calendarState.bookings.push(booking);
+};
+
+export const removeBookingFromState = (bookingId) => {
+  calendarState.bookings = calendarState.bookings.filter(b => b.id !== bookingId);
+};

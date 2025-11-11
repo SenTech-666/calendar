@@ -1,121 +1,109 @@
-import { elements } from './elements.js';
-import { services, timeSlots, formatDate } from '../calendar/utils.js';
-import { bookings } from '../firebase/firestore.js';
+import { $ } from './elements.js';
+import { renderCalendar } from '../calendar/render.js';
 
 /**
- * Сброс формы записи к исходному состоянию
+ * Генерирует опции для select времени
+ * @param {HTMLSelectElement} select - элемент select для заполнения
+ * @param {number} startHour - начальный час (по умолчанию 9)
+ * @param {number} endHour - конечный час (по умолчанию 18)
+ * @param {number} interval - интервал в минутах (по умолчанию 30)
  */
-function resetBookingForm() {
-  if (elements.timeSelect) {
-    elements.timeSelect.innerHTML = '';
-  }
-  
-  if (elements.serviceSelect) {
-    elements.serviceSelect.innerHTML = '';
-    services.forEach(service => {
+const populateTimeOptions = (select, startHour = 9, endHour = 18, interval = 30) => {
+  for (let hour = startHour; hour <= endHour; hour++) {
+    for (let min = 0; min < 60; min += interval) {
+      const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
       const option = document.createElement('option');
-      option.value = service;
-      option.textContent = service;
-      elements.serviceSelect.appendChild(option);
-    });
-  }
-}
-
-/**
- * Обновление списка доступных временных слотов для выбранной даты
- * @param {string} dateStr - Дата в формате YYYY-MM-DD
- */
-function updateTimeSlots(dateStr) {
-  const availableSlots = [];
-
-  for (const slot of timeSlots) {
-    // Проверяем, есть ли запись на это время
-    const isBusy = bookings.some(b => b.date === dateStr && b.time === slot);
-    if (!isBusy) {
-      availableSlots.push(slot);
+      option.value = timeStr;
+      option.textContent = timeStr;
+      select.appendChild(option);
     }
   }
-
-  // Очищаем список временных слотов
-  elements.timeSelect.innerHTML = '';
-
-  // Если нет свободных слотов
-  if (availableSlots.length === 0) {
-    elements.timeSelect.insertAdjacentHTML('beforeend', '<option>Нет свободных слотов</option>');
-  } else {
-    // Добавляем доступные слоты
-    availableSlots.forEach(slot => {
-      const option = document.createElement('option');
-      option.value = slot;
-      option.textContent = slot;
-      elements.timeSelect.appendChild(option);
-    });
-  }
-}
+};
 
 /**
- * Открытие модального окна записи на выбранную дату
- * @param {string} dateStr - Дата в формате YYYY-MM-DD
+ * Генерирует опции для select услуг
+ * @param {HTMLSelectElement} select - элемент select для заполнения
+ * @param {string[]} services - массив названий услуг
  */
-function openBookingModal(dateStr) {
-  // Устанавливаем отображаемую дату
-  elements.selectedDateDisplay.textContent = formatDate(dateStr);
-  
-  // Обновляем список доступных временных слотов
-  updateTimeSlots(dateStr);
-  
-  // Показываем модальное окно
-  elements.bookingModal.style.display = 'block';
-}
+const populateServiceOptions = (select, services) => {
+  services.forEach(service => {
+    const option = document.createElement('option');
+    option.value = service;
+    option.textContent = service;
+    select.appendChild(option);
+  });
+};
 
 /**
- * Обработка отправки формы записи
+ * Настройка формы бронирования
+ * @param {function} onSubmit - обработчик отправки формы
+ * @param {function} onCancel - обработчик отмены
+ * @param {Object} options - дополнительные настройки
  */
-function setupBookingFormHandler() {
-  elements.bookingForm?.addEventListener('submit', async (e) => {
+export const setupBookingForm = (onSubmit, onCancel, options = {}) => {
+  const form = $('#bookingForm');
+  const timeSelect = $('#timeSelect');
+  const serviceSelect = $('#serviceSelect');
+  const cancelBtn = $('#cancelBookingBtn');
+  const closeBtn = $('#closeModalBtn');
+
+
+  // Настройки по умолчанию
+  const defaultOptions = {
+    startHour: 9,
+    endHour: 18,
+    timeInterval: 30,
+    services: ['Стрижка', 'Окрашивание', 'Укладка', 'Массаж']
+  };
+
+  // Объединяем настройки пользователя с дефолтными
+  const config = { ...defaultOptions, ...options };
+
+  // Заполняем опции времени
+  populateTimeOptions(timeSelect, config.startHour, config.endHour, config.timeInterval);
+
+  // Заполняем опции услуг
+  populateServiceOptions(serviceSelect, config.services);
+
+  // Обработчик отправки формы
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const date = elements.selectedDateDisplay.textContent;
-    const time = elements.timeSelect.value;
-    const service = elements.serviceSelect.value;
+    const selectedDateStr = $('#selectedDateDisplay').textContent;
+    const timeStr = timeSelect.value;
+    const service = serviceSelect.value;
 
-    // Валидация обязательных полей
-    if (!date || !time || !service) {
-      alert('Пожалуйста, заполните все поля формы.');
+
+    // Преобразуем выбранное время в дату для проверки
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const selectedDateTime = new Date(`${selectedDateStr} ${hours}:${minutes}:00`);
+
+
+    // Проверка: дата/время не в прошлом
+    if (selectedDateTime < new Date()) {
+      alert('Нельзя записаться на прошедшее время.');
       return;
     }
 
-    try {
-      // Проверяем занятость времени
-      const isBusy = await isTimeBusy(date, time);
-      if (isBusy) {
-        elements.busyTimeModal.style.display = 'block';
-        return;
-      }
+    const data = {
+      date: selectedDateStr,
+      time: timeStr,
+      service
+    };
 
-      // Создаем новую запись
-      const booking = {
-        date: date,
-        time: time,
-        service: service,
-        userId: 'guest-' + Date.now(), // Временный ID для гостей
-        createdAt: Timestamp.now()
-      };
-
-      await saveBooking(booking);
-      alert('Запись успешно создана!');
-      closeModals();
-      await setupCalendar();
-    } catch (error) {
-      console.error('Ошибка при создании записи:', error);
-      alert('Не удалось создать запись. Попробуйте ещё раз.');
-    }
+    onSubmit(data);
+    renderCalendar(); // Перерисовка календаря после отправки
   });
-}
 
-export {
-  resetBookingForm,
-  updateTimeSlots,
-  openBookingModal,
-  setupBookingFormHandler
+  // Обработчики кнопок
+  cancelBtn.addEventListener('click', () => {
+    onCancel();
+    renderCalendar(); // Перерисовка после отмены
+  });
+  
+  closeBtn.addEventListener('click', () => {
+    form.reset();
+    $('#bookingModal').classList.add('hidden');
+    renderCalendar(); // Перерисовка при закрытии
+  });
 };
