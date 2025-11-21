@@ -1,718 +1,417 @@
-/* Модальное окно (остаётся без изменений) */
-.modal {
+/* ===== Сброс и базовые стили ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  color: #2c3e50;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* ===== Цветовая палитра ===== */
+:root {
+  --primary: #4361ee;
+  --primary-light: #5a75f0;
+  --primary-dark: #3a56d4;
+  --success: #06d6a0;
+  --danger: #ef476f;
+  --warning: #ffd166;
+  --info: #118ab2;
+  --dark: #2d3436;
+  --light: #f8f9fa;
+  --gray: #95a5a6;
+  --border: #dfe6e9;
+  --shadow: 0 10px 30px rgba(67, 97, 238, 0.15);
+  --radius: 16px;
+}
+
+/* ===== Заголовки и кнопки ===== */
+h1, h2, h3, h4 {
+  color: var(--dark);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+h1 { font-size: 2.2rem; }
+h2 { font-size: 1.8rem; }
+h3 { font-size: 1.5rem; }
+
+button {
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-size: 1rem;
+}
+
+button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+button:active { transform: translateY(0); }
+
+/* Кнопки */
+.primary   { background: var(--primary); color: white; }
+.primary:hover   { background: var(--primary-dark); }
+
+.danger    { background: var(--danger); color: white; }
+.danger:hover    { background: #e03e65; }
+
+.success   { background: var(--success); color: white; }
+.success:hover   { background: #04c589; }
+
+.secondary { background: #ecf0f1; color: var(--dark); }
+.secondary:hover { background: #dfe6e9; }
+
+/* ===== Шапка ===== */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: white;
+  padding: 20px 30px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.header h1 {
+  color: var(--primary);
+  font-size: 2.4rem;
+}
+
+/* ===== Навигация по месяцам ===== */
+.month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0;
+  background: white;
+  padding: 15px 25px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+#currentMonth {
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.month-nav button {
+  background: var(--primary);
+  color: white;
+  padding: 12px 28px;
+  font-size: 1.1rem;
+}
+
+/* ===== Календарь ===== */
+#calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.weekdays {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.day {
+  background: white;
+  border-radius: var(--radius);
+  min-height: 130px;
+  padding: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.day:hover:not(.past):not(.blocked) {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 35px rgba(67, 97, 238, 0.25);
+}
+
+.day-number {
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--dark);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.day.today {
+  border: 3px solid var(--primary);
+  background: linear-gradient(135deg, #eef1ff 0%, #f8faff 100%);
+}
+
+.day.past {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #f1f2f6;
+}
+
+.day.blocked {
+  background: linear-gradient(135deg, #ffe6e9 0%, #ffd4d9 100%) !important;
+  border: 2px dashed var(--danger) !important;
+  opacity: 0.9;
+}
+
+.day.blocked .day-number {
+  color: var(--danger);
+}
+
+.day.blocked::after {
+  content: "Заблокировано";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Записи в дне */
+.bookings {
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.booking {
+  background: rgba(67, 97, 238, 0.1);
+  border-left: 4px solid var(--primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.booking.admin {
+  background: rgba(67, 97, 238, 0.15);
+  font-weight: 500;
+}
+
+.admin-actions button {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  margin-left: 4px;
+}
+
+/* ===== Модальные окна ===== */
+.modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.3s ease;
+  backdrop-filter: blur(8px);
 }
 
-.modal-content {
-  background-color: white;
-  padding: 25px;
-  border-radius: 12px;
+.modal {
+  background: white;
+  padding: 35px;
+  border-radius: var(--radius);
   width: 90%;
-  max-width: 500px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-  animation: zoomIn 0.3s ease;
-  position: relative;
+  max-width: 520px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  animation: modalPop 0.4s ease;
 }
 
-.modal-content h3 {
-  margin-bottom: 20px;
+@keyframes modalPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal h3 {
   text-align: center;
-  color: #1890ff;
-  font-size: 1.5em;
-}
-
-.modal-content p {
+  color: var(--primary);
+  font-size: 1.8rem;
   margin-bottom: 20px;
-  color: #595959;
-  font-size: 1em;
 }
 
-/* Стили для форм */
-.modal-content label {
+.modal label {
   display: block;
-  margin: 12px 0 6px;
+  margin: 18px 0 8px;
   font-weight: 600;
-  color: #333;
+  color: var(--dark);
 }
 
-.modal-content select,
-.modal-content input[type="time"] {
+.modal input,
+.modal select {
   width: 100%;
-  padding: 12px 15px;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  font-size: 16px;
-  transition: border-color 0.3s;
-  box-sizing: border-box;
-}
-
-.modal-content select:focus,
-.modal-content input[type="time"]:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* Кнопки в модальном окне */
-.modal-content button {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-#submitBooking {
-  background-color: #1890ff;
-  color: white;
-}
-
-#submitBooking:hover {
-  background-color: #40a9ff;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background-color: #f5f5f5;
-  color: #595959;
-  border: 1px solid #d9d9d9;
-}
-
-.btn-secondary:hover {
-  background-color: #e8e8e8;
-  transform: translateY(-1px);
-}
-
-/* Анимации */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes zoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Адаптивность */
-@media (max-width: 480px) {
-  .modal-content {
-    margin: 20px;
-    width: calc(100% - 40px);
-    padding: 20px;
-  }
-  
-  .modal-content button {
-    width: 100%;
-    margin-bottom: 10px;
-  }
-}
-
-/* Календарь */
-.days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.day-cell {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
-  position: relative;
-  border-radius: 8px; /* Скругление углов ячеек */
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-.day-cell:hover {
-  background-color: #f0f8ff;
-  transform: scale(1.02);
-}
-
-.day-number {
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: #333;
-
-}
-
-.bookings-list {
-  font-size: 0.8em;
-  min-height: 20px;
-  color: #555;
-}
-
-.today {
-  background-color: #e6f7ff;
-  border-color: #91d5ff;
-  font-weight: bold;
-}
-
-/* Записи в режиме администратора */
-.booking-item.admin {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px;
-  border-bottom: 1px solid #eee;
-  border-radius: 4px;
-}
-
-.edit-btn, .delete-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.edit-btn:hover {
-  color: #007bff;
-  background-color: #e6f7ff;
-}
-
-.delete-btn:hover {
-  color: #dc3545;
-  background-color: #fff0f0;
-}
-
-/* Кнопка режима администратора */
-.btn-admin {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 15px;
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-.btn-admin:hover {
-  background-color: #0056b3;
-  transform: translateY(-1px);
-}
-
-
-
-.btn-user:hover {
-  background-color: #0056b3;
-  transform: translateY(-1px);
-}
-/* Кнопка переключения режима пользователя */
-.btn-user {
-  background-color: #28a745;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 15px;
-  transition: background-color 0.3s, transform 0.2s;
-}
-
-.btn-user:hover {
-  background-color: #1e7e37;
-  transform: translateY(-1px);
-}
-
-/* Кнопки смены месяца */
-/* Кнопки смены месяца — улучшенная версия */
-.month-nav {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
-  gap: 10px; /* Отступ между кнопками */
-}
-
-.month-nav button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: 
-    background-color 0.3s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.month-nav button:hover {
-  background-color: #545b62;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.month-nav button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Иконки для кнопок смены месяца (можно использовать Unicode или SVG) */
-.month-nav button.prev::before {
-  content: '←';
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-.month-nav button.next::after {
-  content: '→';
-  margin-left: 8px;
-  font-size: 16px;
-}
-
-/* Кнопка переключения режима пользователя — расширенные стили */
-.btn-user-mode {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: capitalize;
-  letter-spacing: 0.3px;
-  transition:
-    background-color 0.3s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.3s ease;
-  white-space: nowrap;
-}
-
-.btn-user-mode:hover {
-  background-color: #1e7e37;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.25);
-}
-
-.btn-user-mode:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.15);
-}
-
-/* Дополнительный стиль для активного режима */
-.btn-user-mode.active {
-  background-color: #1e7e37;
-  box-shadow: 0 0 0 2px white, 0 0 0 4px #28a745;
-}
-
-/* Адаптация для мобильных устройств */
-@media (max-width: 768px) {
-  .month-nav {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .month-nav button {
-    width: 100%;
-    justify-content: center;
-    padding: 12px 16px;
-  }
-
-  .btn-user-mode {
-    width: 100%;
-    margin-bottom: 10px;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .month-nav button {
-    font-size: 13px;
-    padding: 10px 14px;
-  }
-
-  .btn-user-mode {
-    font-size: 13px;
-    padding: 9px 16px;
-  }
-}
-
-/* Дополнительные стили для календаря */
-/* --- ОСНОВНЫЕ СТИЛИ СЕТКИ --- */
-.days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 12px;
-  margin-top: 15px;
-  margin-bottom: 20px;
-  transition: all 0.3s ease;
-}
-
-/* --- ЕДИНООБРАЗНЫЕ ЯЧЕЙКИ --- */
-.day-cell {
-  /* Геометрия и позиционирование */
-  position: relative;
-  border: 1px solid #e0e0e0;
+  padding: 14px;
+  border: 2px solid var(--border);
   border-radius: 12px;
-  min-height: 80px;
-  height: 80px;
-  max-height: 80px;
-  padding: 14px 8px;
+  font-size: 1rem;
+  transition: border 0.3s;
+}
 
+.modal input:focus,
+.modal select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+}
 
-  /* Визуал */
-  background: linear-gradient(to bottom, #f9f9f9, #ffffff);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-
-
-  /* Центрирование содержимого */
+.modal .buttons {
+  margin-top: 30px;
+  text-align: right;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  text-align: center;
-
-  /* Плавные эффекты */
-  transition: all 0.3s ease;
-  overflow: hidden;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
-/* --- СОСТОЯНИЯ ЯЧЕЕК --- */
-/* Текущий день */
-.day-cell.today {
-  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
-  border-color: #91d5ff;
-  border-width: 2px;
-  font-weight: 700;
-}
-
-/* Прошедшие дни */
-.day-cell.past-day {
-  background: linear-gradient(to bottom, #f8f8f8, #eeeeee);
-  opacity: 0.7;
-  filter: saturate(0.8);
-  pointer-events: none;
-}
-
-/* Наведение */
-.day-cell:hover:not(.past-day) {
-  background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%);
-  transform: scale(1.04);
-  z-index: 1;
-  box-shadow: 0 6px 16px rgba(24, 144, 255, 0.18);
-}
-
-/* --- СОДЕРЖАНИЕ ЯЧЕЙКИ --- */
-.day-number {
-  font-weight: 700;
-  color: #2c3e50;
-  font-size: 1.2rem;
-  line-height: 1.2;
-  margin-bottom: 8px;
-}
-
-.bookings-list {
-  font-size: 0.82rem;
-  color: #4a4a4a;
-  line-height: 1.4;
-  width: 100%;
-  padding: 0 4px;
-  text-align: left;
-  
-  /* Жёсткая высота для единообразия */
-  min-height: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-}
-
-/* Индикатор записей */
-.day-cell.has-bookings::after {
-  content: '•';
-  position: absolute;
-  bottom: 6px;
+/* ===== Тосты ===== */
+.toast {
+  position: fixed;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #1890ff;
+  padding: 16px 32px;
+  border-radius: 14px;
   color: white;
-  font-size: 0.6rem;
-  font-weight: bold;
+  font-weight: 600;
+  z-index: 10000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  animation: toastSlide 0.5s ease;
+  min-width: 280px;
+  text-align: center;
+}
+
+@keyframes toastSlide {
+  from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ===== Управление услугами ===== */
+.service-item {
   display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: center;
-}
-
-/* --- АДАПТИВНОСТЬ --- */
-@media (max-width: 1024px) {
-  .days-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }
-  .day-cell { height: 70px; min-height: 70px; max-height: 70px; padding: 12px 6px; }
-  .day-number { font-size: 1.05rem; }
-  .bookings-list { font-size: 0.78rem; height: 18px; min-height: 18px; }
-}
-
-@media (max-width: 768px) {
-  .days-grid { grid-template-columns: repeat(5, 1fr); gap: 9px; }
-  .day-cell { height: 65px; min-height: 65px; max-height: 65px; padding: 10px 5px; border-radius: 10px; }
-  .day-number { font-size: 1rem; }
-  .bookings-list { font-size: 0.72rem; height: 16px; min-height: 16px; }
-}
-
-@media (max-width: 576px) {
-  .days-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .day-cell { height: 60px; min-height: 60px; max-height: 60px; padding: 9px 4px; }
-  .day-number { font-size: 0.95rem; }
-  .bookings-list { font-size: 0.68rem; height: 14px; min-height: 14px; }
-}
-
-@media (max-width: 480px) {
-  .days-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
-  .day-cell { height: 55px; min-height: 55px; max-height: 55px; padding: 8px 3px; border-radius: 8px; }
-  .day-number { font-size: 0.85rem; }
-  .bookings-list { font-size: 0.64rem; height: 12px; min-height: 12px; }
-  .day-cell.has-bookings::after { display: none; } /* Убираем индикатор */
-}
-
-/* --- МОБИЛЬНЫЙ РЕЖИМ (1 колонка) --- */
-@media (max-width: 360px) {
-  .days-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 0 10px; /* Отступы по 10px слева и справа */
-    justify-items: center; /* Центрируем ячейку по горизонтали */
-  }
-  
-  
-  .day-cell {
-    /* Фиксированная относительная ширина: 90% от ширины контейнера */
-    width: 90%;
-    max-width: 100%; /* Не шире родительского контейнера */
-    
-    /* Жёсткая высота для единообразия */
-    height: 70px;
-    min-height: 70px;
-    max-height: 70px;
-    
-    padding: 14px 10px;
-    border-radius: 12px;
-    
-    /* Центрирование содержимого внутри ячейки */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  
-  .day-number {
-    font-size: 1.1rem;
-    margin-bottom: 10px;
-    flex-shrink: 0; /* Не сжимаем номер дня */
-  }
-  
-  .bookings-list {
-    font-size: 0.75rem;
-    height: 20px;
-    min-height: 20px;
-    padding: 0 8px;
-    white-space: nowrap; /* Одна строка записей */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1; /* Можем слегка сжать список записей */
-  }
-  
-  /* Показываем индикатор записей на супер‑маленьких экранах */
-  .day-cell.has-bookings::after {
-    display: block;
-    bottom: 8px;
-    width: 12px;
-    height: 12px;
-    font-size: 0.7rem;
-  }
-}
-
-/* --- ДОПОЛНИТЕЛЬНАЯ АДАПТИВНОСТЬ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ --- */
-@media (max-width: 320px) {
-  .days-grid {
-    padding: 0 8px; /* Уменьшаем отступы до 8px */
-  }
-  
-  .day-cell {
-    width: 92%; /* Занимаем 92% ширины */
-    height: 65px;
-    min-height: 65px;
-    max-height: 65px;
-    padding: 12px 8px;
-  }
-  
-  .day-number {
-    font-size: 1rem;
-    margin-bottom: 8px;
-  }
-  
-  .bookings-list {
-    font-size: 0.7rem;
-    height: 18px;
-    min-height: 18px;
-    padding: 0 6px;
-  }
-  
-  .day-cell.has-bookings::after {
-    width: 10px;
-    height: 10px;
-    font-size: 0.6rem;
-  }
-}
-
-
-/* --- АНИМАЦИИ --- */
-.day-cell {
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeInUp 0.5s forwards;
-}
-
-@keyframes fadeInUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Последовательное появление ячеек */
-/* Последовательное появление ячеек */
-.day-cell:nth-child(1) { animation-delay: 0.1s; }
-.day-cell:nth-child(2) { animation-delay: 0.2s; }
-.day-cell:nth-child(3) { animation-delay: 0.3s; }
-.day-cell:nth-child(4) { animation-delay: 0.4s; }
-.day-cell:nth-child(5) { animation-delay: 0.5s; }
-.day-cell:nth-child(6) { animation-delay: 0.6s; }
-.day-cell:nth-child(7) { animation-delay: 0.7s; }
-.day-cell:nth-child(8) { animation-delay: 0.8s; }
-.day-cell:nth-child(9) { animation-delay: 0.9s; }
-.day-cell:nth-child(10) { animation-delay: 1.0s; }
-.day-cell:nth-child(11) { animation-delay: 1.1s; }
-.day-cell:nth-child(12) { animation-delay: 1.2s; }
-.day-cell:nth-child(13) { animation-delay: 1.3s; }
-.day-cell:nth-child(14) { animation-delay: 1.4s; }
-.day-cell:nth-child(15) { animation-delay: 1.5s; }
-.day-cell:nth-child(16) { animation-delay: 1.6s; }
-.day-cell:nth-child(17) { animation-delay: 1.7s; }
-.day-cell:nth-child(18) { animation-delay: 1.8s; }
-.day-cell:nth-child(19) { animation-delay: 1.9s; }
-.day-cell:nth-child(20) { animation-delay: 2.0s; }
-.day-cell:nth-child(21) { animation-delay: 2.1s; }
-.day-cell:nth-child(22) { animation-delay: 2.2s; }
-.day-cell:nth-child(23) { animation-delay: 2.3s; }
-.day-cell:nth-child(24) { animation-delay: 2.4s; }
-.day-cell:nth-child(25) { animation-delay: 2.5s; }
-.day-cell:nth-child(26) { animation-delay: 2.6s; }
-.day-cell:nth-child(27) { animation-delay: 2.7s; }
-.day-cell:nth-child(28) { animation-delay: 2.8s; }
-.day-cell:nth-child(29) { animation-delay: 2.9s; }
-.day-cell:nth-child(30) { animation-delay: 3.0s; }
-.day-cell:nth-child(31) { animation-delay: 3.1s; }
-.day-cell:nth-child(32) { animation-delay: 3.2s; }
-.day-cell:nth-child(33) { animation-delay: 3.3s; }
-.day-cell:nth-child(34) { animation-delay: 3.4s; }
-.day-cell:nth-child(35) { animation-delay: 3.5s; }
-
-
-/* --- ЭФФЕКТ ПУЛЬСАЦИИ ДЛЯ ТЕКУЩЕГО ДНЯ --- */
-.day-cell.today::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  padding: 16px;
+  background: var(--light);
   border-radius: 12px;
-  pointer-events: none;
-  border: 2px solid rgba(24, 144, 255, 0.3);
-  animation: pulse 2s infinite;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
+.service-item input[type="text"] {
+  flex: 1;
+  min-width: 200px;
 }
 
-/* --- ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ СОСТОЯНИЙ --- */
-/* Ячейка при нажатии */
-.day-cell:active:not(.past-day) {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+.service-item input[type="number"] {
+  width: 100px;
 }
 
-/* Ячейка без записей — лёгкий визуальный акцент */
-.day-cell:not(.has-bookings):not(.today):not(.past-day) {
-  background: linear-gradient(to bottom, #f9f9f9, #ffffff);
+/* ===== Админ-панель ===== */
+.admin-controls {
+  text-align: center;
+  margin: 30px 0;
+  padding: 20px;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-/* Тонкая граница для ячеек без событий */
-.day-cell:not(.today):not(.past-day) {
-  border-color: #e0e0e0;
+/* ===== Адаптивность ===== */
+@media (max-width: 768px) {
+  .header { flex-direction: column; text-align: center; }
+  .month-nav { flex-direction: column; gap: 15px; }
+  .modal { padding: 25px; }
+  #calendar { gap: 12px; }
+  .day { min-height: 110px; padding: 10px; }
+}
+/* Визуальное выделение временных блокировок (не весь день) */
+.booking.blocked-slot {
+  background: #ffebee !important;
+  border-left: 5px solid #e74c3c !important;
+  color: #c62828;
+  font-style: italic;
+  font-weight: 600;
+  position: relative;
 }
 
-/* Увеличенный размер шрифта на очень маленьких экранах */
-@media (max-width: 320px) {
-  .day-number {
-    font-size: 1rem;
-  }
-  .bookings-list {
-    font-size: 0.7rem;
-  }
+.booking.blocked-slot::before {
+  content: "Блок";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 
-/* --- ОБЩИЕ РЕКОМЕНДАЦИИ ПО ИСПОЛЬЗОВАНИЮ --- */
-/*
-1. Для добавления индикатора записи применяйте класс:
-   <div class="day-cell has-bookings">...</div>
+.booking {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 6px 0;
+  border-left: 5px solid #4361ee;
+  font-size: 0.95rem;
+  position: relative;
+}
 
-2. Для отметки текущего дня:
-   <div class="day-cell today">...</div>
+.booking.blocked-slot {
+  border-left-color: #e74c3c !important;
+  background: #ffebee !important;
+}
 
-3. Для прошедших дней:
-   <div class="day-cell past-day">...</div>
-*/
+.booking.blocked-slot::before {
+  content: "Блок";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.admin-actions {
+  margin-top: 6px;
+  text-align: right;
+}
+
+.admin-actions button {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}

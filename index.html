@@ -1,35 +1,37 @@
 <!DOCTYPE html>
-<html lang="ru" dir="ltr">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Календарь записей</title>
-  <link rel="stylesheet" href="/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Медицинский календарь записи</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
-    <header class="app-header">
-      <h1>Календарь записей</h1>
-      <button id="toggleModeBtn" class="btn btn-admin">Режим администратора</button>
+    <header class="header">
+      <h1>Запись к врачу</h1>
+      <div style="display:flex; gap:15px; align-items:center;">
+        <button id="toggleMode">Режим администратора</button>
+        <button id="manageServicesBtn" style="display:none;">Услуги</button>
+        <span id="modeLabel" style="font-weight:600; color:#27ae60;"></span>
+      </div>
     </header>
 
     <div class="month-nav">
-      <button id="prevMonthBtn" class="button">&lt;</button>
-      <span id="currentMonth"></span>
-      <button id="nextMonthBtn" class="btn">&gt;</button>
+      <button id="prevMonth">Предыдущий</button>
+      <h2 id="currentMonth"></h2>
+      <button id="nextMonth">Следующий</button>
     </div>
 
-    <div id="calendarGrid" class="calendar-grid"></div>
+    <div id="calendar"></div>
 
-    <div class="time-limit-control">
-      <label>
-        Запретить запись за:
-        <input type="number" id="timeLimitHours" value="1" min="0" max="24"> часов до начала
-      </label>
+    <div class="admin-controls">
+      <label>Запрет записи за <input type="number" id="timeLimit" min="0" value="2"> часов</label>
     </div>
   </div>
 
-  <script type="module" src="/src/firebase/firestore.js"></script>
-  <script type="module" src="/src/main.js"></script>
+  <div id="modal-root"></div>
+
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
