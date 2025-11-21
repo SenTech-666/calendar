@@ -5,6 +5,7 @@ import { showModal, toast } from "./modal.js";
 import { addBooking, db } from "./firebase.js";
 import { updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { sendTelegramNotification } from "./telegram.js";
+import { sendConfirmationToClient } from "./telegram-client.js";
 
 export const timeOptions = () => {
   let opts = [];
@@ -60,41 +61,56 @@ export const openUserBookingModal = (date) => {
 
   const existing = store.bookings.filter(b => b.date === dateStr && !b.blocked);
 
-  showModal(`
-    <h3>Запись на ${dateStr}</h3>
-    
-    <label>Ваше имя *</label>
-    <input type="text" id="clientName" placeholder="Иван Иванов" required>
+showModal(`
+  <h3>Запись на ${dateStr}</h3>
+  
+  <label>Ваше имя *</label>
+  <input type="text" id="clientName" placeholder="Иван Иванов" required>
 
-    <label>Телефон *</label>
-    <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" required>
+  <label>Телефон *</label>
+  <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" required>
 
-    <label>Услуга</label>
-    <select id="service">
-      ${store.services.length === 0 
-        ? "<option>Нет услуг</option>"
-        : store.services.map(s => 
-            `<option value="${s.id}" data-duration="${s.duration}">${s.name} (${s.duration} мин)</option>`
-          ).join("")}
-    </select>
+  <label>Telegram (для подтверждения и напоминаний)</label>
+  <input 
+    type="text" 
+    id="clientTelegram" 
+    placeholder="79161234567 или @ivanov_123" 
+    style="font-size:0.95em; padding:12px; border-radius:8px; border:1px solid #ddd;"
+  >
 
-    <label>Время</label>
-    <select id="time">${timeOptions()}</select>
+  <div style="background:#f0f8ff; padding:12px; border-radius:8px; margin:12px 0; font-size:0.9em; color:#2c5282; line-height:1.4;">
+    <strong>Как получать сообщения в Telegram:</strong><br>
+    1. Напишите нашему боту <strong>@ТвойБот</strong> любое сообщение (например, «Привет»)<br>
+    2. Укажите здесь ваш номер Telegram (без +7) или @ник<br>
+    → Вы получите подтверждение сразу и напоминание за час до записи
+  </div>
 
-    <div id="hint" style="margin:10px 0; color:#e67e22; min-height:20px;"></div>
+  <label>Услуга</label>
+  <select id="service">
+    ${store.services.length === 0 
+      ? "<option>Нет услуг</option>"
+      : store.services.map(s => 
+          `<option value="${s.id}" data-duration="${s.duration}">${s.name} (${s.duration} мин)</option>`
+        ).join("")}
+  </select>
 
-    ${existing.length ? `
-      <p style="color:#e67e22; margin-top:15px;">
-        <strong>Уже занято:</strong><br>
-        ${existing.map(b => `${b.clientName} — ${b.serviceName} в ${b.time}`).join("<br>")}
-      </p>
-    ` : ""}
+  <label>Время</label>
+  <select id="time">${timeOptions()}</select>
 
-    <div class="buttons">
-      <button class="secondary" onclick="window.closeModal()">Отмена</button>
-      <button class="primary" id="bookBtn">Записаться</button>
+  <div id="hint" style="margin:12px 0; color:#e67e22; min-height:22px; font-weight:500;"></div>
+
+  ${existing.length ? `
+    <div style="background:#fff8e1; padding:12px; border-radius:8px; margin:12px 0; font-size:0.9em;">
+      <strong>Уже занято:</strong><br>
+      ${existing.map(b => `${b.clientName} — ${b.serviceName} в ${b.time}`).join("<br>")}
     </div>
-  `);
+  ` : ""}
+
+  <div class="buttons">
+    <button class="secondary" onclick="window.closeModal()">Отмена</button>
+    <button class="primary" id="bookBtn">Записаться</button>
+  </div>
+`);
 
   const nameInput = document.getElementById("clientName");
   const phoneInput = document.getElementById("clientPhone");
@@ -120,50 +136,74 @@ export const openUserBookingModal = (date) => {
   serviceSel.onchange = updateTimes;
   setTimeout(updateTimes, 50);
 
-  document.getElementById("bookBtn").onclick = async () => {
-    const name = nameInput.value.trim();
-    const phone = phoneInput.value.trim();
-    const service = store.services.find(s => s.id === serviceSel.value);
-    const time = timeSel.value;
+ document.getElementById("bookBtn").onclick = async () => {
+  const name = nameInput.value.trim();
+  const phone = phoneInput.value.trim();
+  const telegramRaw = document.getElementById("clientTelegram").value.trim();
+  const service = store.services.find(s => s.id === serviceSel.value);
+  const time = timeSel.value;
 
-    if (!name || !phone || !service || timeSel.selectedOptions[0].disabled) {
-      toast("Заполните все поля и выберите свободное время", "error");
-      return;
+  // Проверка обязательных полей
+  if (!name || !phone || !service || timeSel.selectedOptions[0].disabled) {
+    toast("Заполните все поля и выберите свободное время", "error");
+    return;
+  }
+
+  // ───── Обработка Telegram ID ─────
+  let telegramId = null;
+  if (telegramRaw) {
+    const cleaned = telegramRaw.replace(/\D/g, "");           // оставляем только цифры
+    if (cleaned.length >= 10) {
+      telegramId = cleaned.startsWith("8")
+        ? "7" + cleaned.slice(1)   // 8 → 7 (российский номер)
+        : cleaned;
     }
+  }
 
-    if (!/^\+?[\d\s\-\(\)]{10,}$/.test(phone.replace(/[^\d]/g, ''))) {
-      toast("Введите корректный телефон", "error");
-      return;
-    }
+  try {
+    // Сохраняем запись в Firestore
+    await addBooking({
+      date: dateStr,
+      time,
+      clientName: name,
+      clientPhone: phone,
+      clientTelegramId: telegramId || null,   // сохраняем ID или null
+      serviceName: service.name,
+      duration: service.duration,
+      blocked: false,
+      reminderSent: false                     // важно для напоминаний за час
+    });
 
-    try {
-      await addBooking({
-        date: dateStr,
+    // ───── Подтверждение клиенту в Telegram ─────
+    if (telegramId) {
+      sendTelegramToClient(
+        telegramId,
+        name,
+        service.name,
+        service.duration,
+        dateStr,
         time,
-        clientName: name,
-        clientPhone: phone,
-        serviceName: service.name,
-        duration: service.duration,
-        blocked: false
-      });
-
-      // Отправляем уведомление в Telegram
-      sendTelegramNotification({
-        clientName: name,
-        clientPhone: phone,
-        serviceName: service.name,
-        duration: service.duration,
-        date: dateStr,
-        time: time
-      });
-
-      toast(`Вы записаны!\n${name}, ${dateStr} в ${time}`, "success");
-      window.closeModal();
-    } catch (e) {
-      console.error(e);
-      toast("Ошибка записи", "error");
+        false               // false = это подтверждение, а не напоминание
+      );
     }
-  };
+
+    // ───── Уведомление админу (как было раньше) ─────
+    sendTelegramNotification({
+      clientName: name,
+      clientPhone: phone,
+      serviceName: service.name,
+      duration: service.duration,
+      date: dateStr,
+      time: time
+    });
+
+    toast(`Вы записаны!\n${name}, ${dateStr} в ${time}`, "success");
+    window.closeModal();
+  } catch (e) {
+    console.error(e);
+    toast("Ошибка записи", "error");
+  }
+};
 };
 
 // Админская модалка дня
