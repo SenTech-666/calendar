@@ -2,9 +2,24 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Медицинский календарь записи</title>
-  <link rel="stylesheet" href="styles.css" />
+  <!-- ЭТО САМОЕ ВАЖНОЕ — без этого на 90% телефонов всё сломается -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Запись к врачу</title>
+
+  <!-- Трюк, чтобы стили подгрузились ДО отрисовки страницы на слабых телефонах -->
+  <link rel="stylesheet" href="styles.css?v=20251122" media="print" onload="this.media='all'">
+
+  <!-- Фолбэк на случай если основной не загрузился -->
+  <noscript><link rel="stylesheet" href="styles.css?v=20251122"></noscript>
+
+  <style>
+    /* Критические стили — показываются сразу, пока CSS грузится */
+    body { font-family: system-ui, sans-serif; background: #f5f7fa; margin: 0; padding: 0; min-height: 100vh; }
+    #calendar { padding: 10px; }
+    @media (max-width: 768px) {
+      .day, .mobile-day { background: white !important; margin: 15px auto !important; border-radius: 16px !important; box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important; }
+    }
+  </style>
 </head>
 <body>
   <div class="app">
