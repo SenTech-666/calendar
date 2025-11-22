@@ -107,9 +107,9 @@ showModal(`
   ` : ""}
 
   <div class="buttons">
-    <button class="secondary" onclick="window.closeModal()">Отмена</button>
-    <button class="primary" id="bookBtn">Записаться</button>
-  </div>
+  <button class="secondary" onclick="window.closeModal()">Отмена</button>
+  <button class="primary" id="bookBtn" style="min-width:140px;">Записаться</button>
+</div>
 `);
 
   const nameInput = document.getElementById("clientName");

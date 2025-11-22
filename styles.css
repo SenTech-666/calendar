@@ -524,3 +524,66 @@ button:active { transform: translateY(0); }
     font-weight: 600;
   }
 }
+/* ============= ИСПРАВЛЕНИЕ МОДАЛЬНЫХ ОКОН НА МОБИЛЬНЫХ ============= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px 10px;           /* ← отступы, чтобы не прижималось к краям */
+  overflow-y: auto;             /* ← разрешаем скролл внутри бекдропа */
+  backdrop-filter: blur(10px);
+}
+
+.modal {
+  background: white;
+  padding: 30px 20px;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 95vh;             /* ← главное: не выше 95% экрана */
+  overflow-y: auto;             /* ← если всё равно не влезло — будет скролл внутри формы */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  animation: modalPop 0.35s ease-out;
+  position: relative;
+}
+
+/* Чтобы кнопки всегда были видны */
+.modal .buttons {
+  margin-top: 30px;
+  padding: 20px 0 10px;
+  background: white;
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Уменьшаем отступы на маленьких экранах */
+@media (max-height: 680px), (max-width: 380px) {
+  .modal {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .modal h3 { font-size: 1.5rem; margin-bottom: 15px; }
+  .modal label { margin: 14px 0 6px; }
+  .modal input,
+  .modal select { padding: 12px; font-size: 16px !important; } /* ← iOS не даёт zoom < 16px */
+}
+
+/* Фикс для iOS — чтобы клавиатура не закрывала кнопку */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    align-items: flex-start;     /* ← начинаем с верха, если экран маленький */
+    padding-top: 20px;
+  }
+  .modal {
+    margin-top: 10px;
+    max-height: calc(100vh - 40px);
+  }
+}
