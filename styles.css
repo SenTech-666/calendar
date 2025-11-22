@@ -31,7 +31,7 @@ body {
 /* ===== ГЛАВНАЯ СТРАНИЦА — ТВОЯ ВЕРСИЯ, НЕ МЕНЯЛ НИ СТРОЧКИ ===== */
 .hero {
   background: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)), 
-              url('/assets/pexels-brigitte-tohm-36757-239576.jpg') center/cover no-repeat;
+              url('./assets/pexels-brigitte-tohm-36757-239576.jpg') center/cover no-repeat;
   height: 100vh;
   display: flex;
   align-items: center;
