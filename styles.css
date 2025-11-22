@@ -506,3 +506,21 @@ button:active { transform: translateY(0); }
     cursor: pointer;
   }
 }
+@media (max-width: 768px) {
+  .mobile-day { 
+    cursor: pointer !important;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .mobile-day:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+  }
+  .blocked-message {
+    text-align: center;
+    padding: 30px;
+    background: #fdf2f2;
+    color: #e74c3c;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+}
