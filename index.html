@@ -2,51 +2,141 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <!-- ЭТО САМОЕ ВАЖНОЕ — без этого на 90% телефонов всё сломается -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Запись к врачу</title>
-
-  <!-- Трюк, чтобы стили подгрузились ДО отрисовки страницы на слабых телефонах -->
-  <link rel="stylesheet" href="styles.css?v=20251122" media="print" onload="this.media='all'">
-
-  <!-- Фолбэк на случай если основной не загрузился -->
-  <noscript><link rel="stylesheet" href="styles.css?v=20251122"></noscript>
-
-  <style>
-    /* Критические стили — показываются сразу, пока CSS грузится */
-    body { font-family: system-ui, sans-serif; background: #f5f7fa; margin: 0; padding: 0; min-height: 100vh; }
-    #calendar { padding: 10px; }
-    @media (max-width: 768px) {
-      .day, .mobile-day { background: white !important; margin: 15px auto !important; border-radius: 16px !important; box-shadow: 0 6px 20px rgba(0,0,0,0.1) !important; }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Маникюр • Анна</title>
+  <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all'">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <h1>Запись к врачу</h1>
-      <div style="display:flex; gap:15px; align-items:center;">
-        <button id="toggleMode">Режим администратора</button>
-        <button id="manageServicesBtn" style="display:none;">Услуги</button>
-        <span id="modeLabel" style="font-weight:600; color:#27ae60;"></span>
+
+  <header class="hero">
+    <div class="container">
+      <h1>Василики</h1>
+      <p class="subtitle">Идеальный маникюр — это искусство</p>
+      <div class="buttons">
+        <button class="btn primary" id="goToCalendar">Записаться онлайн</button>
+        <button class="btn secondary" id="adminLogin">Войти как мастер</button>
       </div>
-    </header>
-
-    <div class="month-nav">
-      <button id="prevMonth">Предыдущий</button>
-      <h2 id="currentMonth"></h2>
-      <button id="nextMonth">Следующий</button>
     </div>
+  </header>
 
-    <div id="calendar"></div>
-
-    <div class="admin-controls">
-      <label>Запрет записи за <input type="number" id="timeLimit" min="0" value="2"> часов</label>
+  <section class="about">
+    <div class="container">
+      <h2>Почему выбирают меня</h2>
+      <div class="features">
+        <div>Стерильность 100%</div>
+        <div>Только качественные материалы</div>
+        <div>Более 5 лет опыта</div>
+        <div>Индивидуальный подход</div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <div id="modal-root"></div>
+  <section class="services">
+    <div class="container">
+      <h2>Услуги и цены</h2>
+      <div class="price-list">
+        <div>Маникюр + гель-лак <span>2500 ₽</span></div>
+        <div>Комбинированный маникюр <span>1800 ₽</span></div>
+        <div>Педикюр (обработка + покрытие) <span>3500 ₽</span></div>
+        <div>Снятие + маникюр <span>2200 ₽</span></div>
+        <div>Дизайн (в зависимости от сложности) <span>от 300 ₽</span></div>
+      </div>
+    </div>
+  </section>
 
-  <script type="module" src="src/main.js"></script>
+  <section class="gallery">
+    <div class="container">
+      <h2>Мои работы</h2>
+      <div class="grid">
+        <div class="photo" style="background-image:url('https://via.placeholder.com/400x500/ffeef0/ffb6c1?text=Ногти+1')"></div>
+        <div class="photo" style="background-image:url('https://via.placeholder.com/400x500/f8d7da/ffc0cb?text=Ногти+2')"></div>
+        <div class="photo" style="background-image:url('https://via.placeholder.com/400x500/fff0f5/ffc0cb?text=Ногти+3')"></div>
+        <div class="photo" style="background-image:url('https://via.placeholder.com/400x500/fce4ec/ffc0cb?text=Ногти+4')"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>Москва • Работаю по записи</p>
+      <p>Instagram: <a href="https://instagram.com/your_nick" target="_blank">@your_nick</a></p>
+    </div>
+  </footer>
+
+<div id="modal-root"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+
+  <!-- Правильные импорты из src/ -->
+  <script type="module">
+    import { showModal, closeModal } from "./src/modal.js";
+    import { toast } from "./src/toast.js";
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
+      authDomain: "calendar-666-5744f.firebaseapp.com",
+      projectId: "calendar-666-5744f",
+      appId: "1:665606748855:web:5e4a2865b1f26494cf2b32"
+    };
+    initializeApp(firebaseConfig);
+    const auth = getAuth();
+
+    // Записаться онлайн
+    document.getElementById("goToCalendar").onclick = () => {
+      location.href = "calendar.html";
+    };
+
+    // Вход мастера
+    document.getElementById("adminLogin").onclick = () => {
+      if (auth.currentUser) {
+        signOut(auth);
+        toast("Вы вышли из аккаунта", "info");
+        return;
+      }
+
+      showModal(`
+        <h3>Вход для мастера</h3>
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="admin@example.com" />
+        <label>Пароль</label>
+        <input type="password" id="loginPass" />
+        <div class="buttons" style="margin-top:25px;">
+          <button class="secondary" onclick="closeModal()">Отмена</button>
+          <button class="primary" onclick="loginMaster()">Войти</button>
+        </div>
+      `);
+    };
+
+    window.loginMaster = async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass = document.getElementById("loginPass").value;
+
+      if (!email || !pass) {
+        toast("Заполните все поля", "error");
+        return;
+      }
+
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        toast("Добро пожаловать!", "success");
+        closeModal();
+        setTimeout(() => location.href = "calendar.html", 700);
+      } catch (err) {
+        toast("Неверный логин или пароль", "error");
+      }
+    };
+
+    // Обновление текста кнопки при входе/выходе
+    onAuthStateChanged(auth, (user) => {
+      const btn = document.getElementById("adminLogin");
+      if (btn) btn.textContent = user ? "Выйти" : "Войти как мастер";
+    });
+  </script>
 </body>
 </html>

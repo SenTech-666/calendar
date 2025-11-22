@@ -1,375 +1,300 @@
-// src/components.js
-import { store } from "./store.js";
-import { formatDate } from "./date.js";
-import { showModal, toast } from "./modal.js";
-import { addBooking, db } from "./firebase.js";
-import { updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+// src/components.js — АБСОЛЮТНО ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ (22.11.2025)
+
+import { store, subscribe } from "./store.js";
+import { showModal, closeModal } from "./modal.js";
+import { toast } from "./toast.js";
+import { addBooking } from "./firebase.js";
+import { db } from "./firebase.js";
+import { deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { sendTelegramNotification } from "./telegram.js";
 import { sendConfirmationToClient } from "./telegram-client.js";
 
-export const timeOptions = () => {
-  let opts = [];
-  for (let h = 9; h <= 18; h++) {
-    for (let m = 0; m < 60; m += 30) {
-      if (h === 18 && m === 30) continue;
-      const t = `${h.toString().padStart(2, 0)}:${m.toString().padStart(2, 0)}`;
-      opts.push(`<option value="${t}">${t}</option>`);
-    }
-  }
-  return opts.join("");
-};
+// Временные услуги (можно будет заменить на загрузку из Firebase)
+const SERVICES = [
+  { id: "1", name: "Маникюр + гель-лак", duration: 120 },
+  { id: "2", name: "Комбинированный маникюр", duration: 90 },
+  { id: "3", name: "Педикюр", duration: 90 }
+];
 
-const timeToMinutes = t => t.split(":").map(Number).reduce((h, m) => h * 60 + m, 0);
-
+// Генерация времени
 const allTimeSlots = [];
 for (let h = 9; h <= 18; h++) {
   allTimeSlots.push(`${h.toString().padStart(2,0)}:00`, `${h.toString().padStart(2,0)}:30`);
 }
 allTimeSlots.pop();
 
-// Правильная проверка свободного времени
+const timeToMinutes = t => t.split(":").map(Number).reduce((h, m) => h * 60 + m, 0);
+
+// Проверка свободности слота
 const isRangeFree = (dateStr, startTime, duration) => {
   const start = timeToMinutes(startTime);
   const end = start + duration;
-
   return allTimeSlots.every(slot => {
     const slotMin = timeToMinutes(slot);
     if (slotMin < start || slotMin >= end) return true;
-
-    const conflict = store.bookings.some(b => {
+    return !store.bookings.some(b => {
       if (b.date !== dateStr) return false;
-      if (b.blocked && b.time === "00:00") return true;
-
+      if (b.time === "00:00" && b.blocked) return true;
       const bStart = timeToMinutes(b.time);
       const bEnd = bStart + (b.duration || 30);
       return slotMin >= bStart && slotMin < bEnd;
     });
-
-    return !conflict;
   });
 };
 
-// Запись клиента
-export const openUserBookingModal = (date) => {
-  const dateStr = formatDate(date);
-  const limit = new Date();
-  limit.setHours(limit.getHours() + store.timeLimitHours);
-  if (date < limit) return toast("Запись слишком близко", "error");
-
-  const blockedWholeDay = store.bookings.some(b => b.date === dateStr && b.blocked && b.time === "00:00");
-  if (blockedWholeDay) return toast("День заблокирован", "error");
-
-  const existing = store.bookings.filter(b => b.date === dateStr && !b.blocked);
-
-showModal(`
-  <h3>Запись на ${dateStr}</h3>
-  
-  <label>Ваше имя *</label>
-  <input type="text" id="clientName" placeholder="Иван Иванов" required>
-
-  <label>Телефон *</label>
-  <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" required>
-
-  <label>Telegram (для подтверждения и напоминаний)</label>
-  <input 
-    type="text" 
-    id="clientTelegram" 
-    placeholder="79161234567 или @ivanov_123" 
-    style="font-size:0.95em; padding:12px; border-radius:8px; border:1px solid #ddd;"
-  >
-
-  <div style="background:#f0f8ff; padding:12px; border-radius:8px; margin:12px 0; font-size:0.9em; color:#2c5282; line-height:1.4;">
-    <strong>Как получать сообщения в Telegram:</strong><br>
-    1. Напишите нашему боту <strong>@ТвойБот</strong> любое сообщение (например, «Привет»)<br>
-    2. Укажите здесь ваш номер Telegram (без +7) или @ник<br>
-    → Вы получите подтверждение сразу и напоминание за час до записи
-  </div>
-
-  <label>Услуга</label>
-  <select id="service">
-    ${store.services.length === 0 
-      ? "<option>Нет услуг</option>"
-      : store.services.map(s => 
-          `<option value="${s.id}" data-duration="${s.duration}">${s.name} (${s.duration} мин)</option>`
-        ).join("")}
-  </select>
-
-  <label>Время</label>
-  <select id="time">${timeOptions()}</select>
-
-  <div id="hint" style="margin:12px 0; color:#e67e22; min-height:22px; font-weight:500;"></div>
-
-  ${existing.length ? `
-    <div style="background:#fff8e1; padding:12px; border-radius:8px; margin:12px 0; font-size:0.9em;">
-      <strong>Уже занято:</strong><br>
-      ${existing.map(b => `${b.clientName} — ${b.serviceName} в ${b.time}`).join("<br>")}
-    </div>
-  ` : ""}
-
-  <div class="buttons">
-  <button class="secondary" onclick="window.closeModal()">Отмена</button>
-  <button class="primary" id="bookBtn" style="min-width:140px;">Записаться</button>
-</div>
-`);
-
-  const nameInput = document.getElementById("clientName");
-  const phoneInput = document.getElementById("clientPhone");
-  const serviceSel = document.getElementById("service");
-  const timeSel = document.getElementById("time");
-  const hint = document.getElementById("hint");
-
-  const updateTimes = () => {
-    if (!serviceSel.value) { hint.textContent = "Выберите услугу"; return; }
-    const duration = Number(serviceSel.selectedOptions[0].dataset.duration) || 30;
-    let freeCount = 0;
-
-    Array.from(timeSel.options).forEach(opt => {
-      const free = isRangeFree(dateStr, opt.value, duration);
-      opt.disabled = !free;
-      opt.textContent = free ? opt.value : opt.value + " (занято)";
-      if (free) freeCount++;
-    });
-
-    hint.textContent = freeCount ? `Свободно: ${freeCount} слотов` : "Нет свободного времени";
-  };
-
-  serviceSel.onchange = updateTimes;
-  setTimeout(updateTimes, 50);
-
- document.getElementById("bookBtn").onclick = async () => {
-  const name = nameInput.value.trim();
-  const phone = phoneInput.value.trim();
-  const telegramRaw = document.getElementById("clientTelegram").value.trim();
-  const service = store.services.find(s => s.id === serviceSel.value);
-  const time = timeSel.value;
-
-  // Проверка обязательных полей
-  if (!name || !phone || !service || timeSel.selectedOptions[0].disabled) {
-    toast("Заполните все поля и выберите свободное время", "error");
-    return;
+// ГЛАВНАЯ ФУНКЦИЯ — теперь принимает ISO-строку "2025-11-23"
+export function showBookingModal(dateISO) {
+  if (!dateISO || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) {
+    return toast("Неверная дата", "error");
   }
 
-  // ───── Обработка Telegram ID ─────
-  let telegramId = null;
-  if (telegramRaw) {
-    const cleaned = telegramRaw.replace(/\D/g, "");           // оставляем только цифры
-    if (cleaned.length >= 10) {
-      telegramId = cleaned.startsWith("8")
-        ? "7" + cleaned.slice(1)   // 8 → 7 (российский номер)
-        : cleaned;
+  const dateStr = dateISO;
+
+  // Ограничения для клиентов
+  if (!store.isAdmin) {
+    const limit = new Date();
+    limit.setHours(limit.getHours() + (store.timeLimitHours || 2));
+    if (new Date(dateISO) < limit) {
+      return toast("Запись возможна не ранее чем за 2 часа", "error");
+    }
+
+    const blocked = store.bookings.some(b => b.date === dateStr && b.time === "00:00" && b.blocked);
+    if (blocked) return toast("День заблокирован мастером", "error");
+  }
+
+  if (store.isAdmin) {
+    openAdminDayModal(dateStr);
+  } else {
+    openUserBookingModal(dateStr);
+  }
+}
+
+// === КЛИЕНТСКАЯ МОДАЛКА ===
+export const openUserBookingModal = (dateStr) => {
+  const availableTimes = allTimeSlots.filter(t => isRangeFree(dateStr, t, 30));
+
+  showModal(`
+    <h3 style="color:#ff6b9d;margin-bottom:20px">Запись на ${dateStr}</h3>
+    <label>Ваше имя</label>
+    <input type="text" id="clientName" placeholder="ФИО" required />
+    <label>Телефон</label>
+    <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" required />
+    <label>Telegram ID (опционально)</label>
+    <input type="text" id="telegramId" placeholder="@username или ID" />
+    <label>Услуга</label>
+    <select id="service" required>
+      ${SERVICES.map(s => `<option value="${s.id}">${s.name} (${s.duration} мин)</option>`).join("")}
+    </select>
+    <label>Время</label>
+    <select id="time" required>
+      <option value="">Выберите время</option>
+      ${availableTimes.map(t => `<option value="${t}">${t}</option>`).join("")}
+    </select>
+    <div class="buttons" style="margin-top:25px;">
+      <button class="secondary" onclick="closeModal()">Отмена</button>
+      <button class="primary" onclick="bookAppointment('${dateStr}')">Записаться</button>
+    </div>
+  `);
+};
+
+// === АДМИНСКАЯ МОДАЛКА С ЖИВЫМ ОБНОВЛЕНИЕМ ===
+let currentAdminModalDate = null;
+
+const renderAdminModalContent = () => {
+  if (!currentAdminModalDate) return;
+  const dateStr = currentAdminModalDate;
+
+  const blockedEntry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
+  const isBlocked = !!blockedEntry;
+
+  const regular = store.bookings.filter(b =>
+    b.date === dateStr &&
+    b.time !== "00:00" &&
+    b.blocked !== true
+  );
+
+  const modalContent = document.querySelector("#modal-root .modal > div") || document.querySelector("#modal-root .modal");
+  if (!modalContent) return;
+
+  modalContent.innerHTML = `
+    <h3 style="color:#ff6b9d;margin-bottom:20px">Управление: ${dateStr}</h3>
+    
+    <div style="margin-bottom:30px;padding:20px;background:#fff0f5;border-radius:18px">
+      <h4 style="color:#ff6b9d;margin-bottom:15px">Блокировка дня</h4>
+      ${isBlocked
+        ? `<button class="primary" onclick="unblockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(239,71,111,0.4);font-weight:600">
+             Разблокировать весь день
+           </button>`
+        : `<button class="primary" onclick="blockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(255,107,157,0.3);font-weight:600">
+             Заблокировать весь день
+           </button>`
+      }
+    </div>
+
+    <h4 style="margin:20px 0 10px;color:#ff6b9d">Записи (${regular.length})</h4>
+    ${regular.length === 0
+      ? `<p style="text-align:center;color:#aaa;font-style:italic">Нет записей</p>`
+      : regular.map(b => `
+          <div style="background:#fff0f5;padding:16px;border-radius:18px;margin:12px 0;box-shadow:0 4px 15px rgba(255,107,157,0.1);border-left:4px solid #ff6b9d">
+            <div style="font-weight:600;color:#ff6b9d">${b.time} — ${b.clientName} (${b.serviceName} ${b.duration} мин)</div>
+            <div style="margin:6px 0">Тел: ${b.clientPhone || "—"} | TG: ${b.telegramId || "—"}</div>
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+              <button onclick="editBooking('${b.id}')" style="background:#ff6b9d;color:white;padding:8px 16px;border:none;border-radius:50px;font-size:0.9rem">
+                Изменить
+              </button>
+              <button onclick="deleteBooking('${b.id}')" style="background:#ef476f;color:white;padding:8px 16px;border:none;border-radius:50px;font-size:0.9rem">
+                Отменить
+              </button>
+            </div>
+          </div>
+        `).join("")
+    }
+
+    <div class="buttons" style="margin-top:30px">
+      <button class="secondary" onclick="closeModal()">Закрыть</button>
+    </div>
+  `;
+};
+
+const openAdminDayModal = (dateStr) => {
+  currentAdminModalDate = dateStr;
+  showModal(`<div></div>`);
+  renderAdminModalContent();
+
+  const unsubscribe = subscribe(() => {
+    if (currentAdminModalDate) renderAdminModalContent();
+  });
+
+  const oldClose = closeModal;
+  window.closeModal = () => {
+    unsubscribe();
+    currentAdminModalDate = null;
+    oldClose();
+  };
+};
+
+// === РЕДАКТИРОВАНИЕ ===
+window.editBooking = (id) => {
+  const b = store.bookings.find(x => x.id === id);
+  if (!b) return toast("Запись не найдена", "error");
+
+  showModal(`
+    <h3 style="color:#ff6b9d;margin-bottom:20px">Редактировать запись</h3>
+    <label>Дата</label>
+    <input type="date" id="editDate" value="${b.date}" />
+    <label>Время</label>
+    <input type="time" id="editTime" value="${b.time}" step="1800" />
+    <label>Услуга</label>
+    <select id="editService">
+      ${SERVICES.map(s => `<option value="${s.id}" ${s.id === (b.serviceId || "1") ? "selected" : ""}>${s.name} (${s.duration} мин)</option>`).join("")}
+    </select>
+    <label>Имя клиента</label>
+    <input type="text" id="editClientName" value="${b.clientName || ""}" />
+    <label>Телефон</label>
+    <input type="tel" id="editClientPhone" value="${b.clientPhone || ""}" />
+    <label>Telegram ID</label>
+    <input type="text" id="editTelegramId" value="${b.telegramId || ""}" />
+    <div class="buttons" style="margin-top:25px;">
+      <button class="secondary" onclick="closeModal()">Отмена</button>
+      <button class="primary" onclick="saveEdit('${id}', '${b.date}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveEdit = async (id, oldDate) => {
+  const newDate = document.getElementById("editDate").value;
+  const newTime = document.getElementById("editTime").value;
+  const serviceId = document.getElementById("editService").value;
+  const service = SERVICES.find(s => s.id === serviceId);
+  const clientName = document.getElementById("editClientName").value.trim();
+  const clientPhone = document.getElementById("editClientPhone").value.trim();
+  const telegramId = document.getElementById("editTelegramId").value.trim();
+
+  if (!newDate || !newTime || !clientName) return toast("Заполните обязательные поля", "error");
+  if (newDate !== oldDate || newTime !== store.bookings.find(b => b.id === id).time) {
+    if (!isRangeFree(newDate, newTime, service.duration)) {
+      return toast("Это время уже занято", "error");
     }
   }
 
   try {
-    // Сохраняем запись в Firestore
-    await addBooking({
-      date: dateStr,
-      time,
-      clientName: name,
-      clientPhone: phone,
-      clientTelegramId: telegramId || null,   // сохраняем ID или null
-      serviceName: service.name,
-      duration: service.duration,
-      blocked: false,
-      reminderSent: false                     // важно для напоминаний за час
+    await updateDoc(doc(db, "bookings", id), {
+      date: newDate,
+      time: newTime,
+      serviceId, serviceName: service.name, duration: service.duration,
+      clientName, clientPhone, telegramId: telegramId || null,
+      updatedAt: new Date().toISOString()
     });
 
-    // ───── Подтверждение клиенту в Telegram ─────
     if (telegramId) {
-     sendConfirmationToClient(
-        telegramId,
-        name,
-        service.name,
-        service.duration,
-        dateStr,
-        time,
-        false               // false = это подтверждение, а не напоминание
-      );
+      await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, newDate, newTime);
     }
 
-    // ───── Уведомление админу (как было раньше) ─────
-    sendTelegramNotification({
-      clientName: name,
-      clientPhone: phone,
-      serviceName: service.name,
-      duration: service.duration,
+    toast("Запись обновлена", "success");
+    closeModal();
+  } catch (e) {
+    console.error(e);
+    toast("Ошибка сохранения", "error");
+  }
+};
+
+// === БЛОКИРОВКА / РАЗБЛОКИРОВКА / УДАЛЕНИЕ ===
+window.blockDay = async (dateStr) => {
+  if (!confirm("Заблокировать весь день?")) return;
+  await addBooking({ date: dateStr, time: "00:00", blocked: true, clientName: "Мастер" });
+  toast("День заблокирован", "info");
+  closeModal();
+};
+
+window.unblockDay = async (dateStr) => {
+  const entry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
+  if (!entry || !confirm("Разблокировать день?")) return;
+  await deleteDoc(doc(db, "bookings", entry.id));
+  toast("День разблокирован", "success");
+  closeModal();
+};
+
+window.deleteBooking = async (id) => {
+  if (!confirm("Удалить запись?")) return;
+  await deleteDoc(doc(db, "bookings", id));
+  toast("Запись удалена", "info");
+  closeModal();
+};
+
+// === ЗАПИСЬ КЛИЕНТА ===
+window.bookAppointment = async (dateStr) => {
+  const clientName = document.getElementById("clientName").value.trim();
+  const clientPhone = document.getElementById("clientPhone").value.trim();
+  const telegramId = document.getElementById("telegramId").value.trim();
+  const serviceId = document.getElementById("service").value;
+  const time = document.getElementById("time").value;
+
+  if (!clientName || !clientPhone || !serviceId || !time) return toast("Заполните все поля", "error");
+
+  const service = SERVICES.find(s => s.id === serviceId);
+  if (!isRangeFree(dateStr, time, service.duration)) return toast("Время занято", "error");
+
+  try {
+    const booking = await addBooking({
       date: dateStr,
-      time: time
+      time,
+      clientName,
+      clientPhone,
+      telegramId: telegramId || null,
+      serviceId,
+      serviceName: service.name,
+      duration: service.duration
     });
 
-    toast(`Вы записаны!\n${name}, ${dateStr} в ${time}`, "success");
-    window.closeModal();
+    await sendTelegramNotification(booking);
+    if (telegramId) {
+      await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, dateStr, time);
+    }
+
+    toast("Вы записаны!", "success");
+    closeModal();
   } catch (e) {
     console.error(e);
     toast("Ошибка записи", "error");
   }
-};
-};
-
-// Админская модалка дня
-export const openAdminDayModal = (date) => {
-  const dateStr = formatDate(date);
-  const blockedWholeDay = store.bookings.find(b => b.date === dateStr && b.blocked && b.time === "00:00");
-  const timeBlocks = store.bookings.filter(b => b.date === dateStr && b.blocked && b.time !== "00:00");
-  const regularBookings = store.bookings.filter(b => b.date === dateStr && !b.blocked);
-
-  showModal(`
-    <h3>Администрирование: ${dateStr}</h3>
-
-    ${blockedWholeDay ? `
-      <div style="background:#ffebee;padding:16px;border-radius:12px;margin:15px 0;color:#c62828;border:1px solid #ffcdd2;">
-        <strong>День полностью заблокирован</strong><br>
-        Причина: ${blockedWholeDay.name}
-        <button class="danger" style="margin-top:10px;" onclick="unblockDay('${dateStr}')">
-          Разблокировать весь день
-        </button>
-      </div>
-    ` : `
-      <div style="background:#e8f5e8;padding:16px;border-radius:12px;margin:15px 0;border:1px solid #c8e6c9;">
-        <button class="danger" onclick="blockWholeDay('${dateStr}')">Заблокировать весь день</button>
-        <button class="primary" style="margin-left:10px;" onclick="blockTimeSlot('${dateStr}')">Заблокировать время</button>
-      </div>
-    `}
-
-    ${timeBlocks.length > 0 ? `
-      <div style="margin:20px 0;padding:12px;background:#fff3cd;border-radius:8px;border:1px solid #ffeaa7;">
-        <strong>Заблокированные слоты:</strong><br>
-        ${timeBlocks.map(b => `
-          <div style="margin:8px 0;padding:10px;background:white;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
-            <span>
-              <strong>${b.time}</strong> – ${window.formatTimeEnd(b.time, b.duration)}<br>
-              <em>${b.name}</em>
-            </span>
-            <button class="danger" style="font-size:0.8rem;" onclick="unblockTimeSlot('${b.id}')">Разблокировать</button>
-          </div>
-        `).join("")}
-      </div>
-    ` : ""}
-
-    <h4 style="margin-top:20px;">Записи (${regularBookings.length})</h4>
-    ${regularBookings.length === 0 
-      ? "<p style='color:#95a5a6;'>Нет записей</p>"
-      : regularBookings.map(b => `
-        <div style="padding:14px;background:#f8f9fa;border-radius:12px;margin:10px 0;border-left:5px solid #4361ee;">
-          <div style="font-weight:600; font-size:1.1em;">
-            ${b.clientName || "Клиент"}
-          </div>
-          <div style="color:#3498db; margin:4px 0;">
-            ${b.serviceName || "Услуга"}
-          </div>
-          <div style="color:#2c3e50;">
-            <strong>${b.time}</strong> (${b.duration} мин)
-          </div>
-          <div style="color:#7f8c8d; font-size:0.9em; margin-top:4px;">
-            ☎ ${b.clientPhone || "—"}
-          </div>
-          <div style="margin-top:10px;">
-            <button onclick="window.editBooking('${b.id}')">Изменить</button>
-            <button class="danger" style="margin-left:8px;" onclick="window.cancelBooking('${b.id}')">Отмена</button>
-          </div>
-        </div>
-      `).join("")}
-
-    <div class="buttons" style="margin-top:25px;">
-      <button class="secondary" onclick="window.closeModal()">Закрыть</button>
-    </div>
-  `);
-};
-
-// Редактирование записи
-export const openEditBookingModal = (bookingId) => {
-  const booking = store.bookings.find(b => b.id === bookingId);
-  if (!booking || booking.blocked) return;
-
-  const dateStr = booking.date;
-
-  showModal(`
-    <h3>Редактирование записи</h3>
-    <p><strong>Дата:</strong> ${dateStr}</p>
-
-    <label>Имя клиента</label>
-    <input type="text" id="editClientName" value="${booking.clientName || ''}">
-
-    <label>Телефон</label>
-    <input type="tel" id="editClientPhone" value="${booking.clientPhone || ''}">
-
-    <label>Услуга</label>
-    <select id="editService">
-      ${store.services.map(s => `
-        <option value="${s.id}" data-duration="${s.duration}" ${s.name === booking.serviceName ? "selected" : ""}>
-          ${s.name} (${s.duration} мин)
-        </option>
-      `).join("")}
-    </select>
-
-    <label>Время</label>
-    <select id="editTime">${timeOptions()}</select>
-
-    <label>Комментарий к переносу</label>
-    <input type="text" id="editComment" placeholder="Например: по просьбе клиента">
-
-    <div id="editHint" style="margin:10px 0;color:#e67e22;min-height:20px;"></div>
-
-    <div class="buttons">
-      <button class="secondary" onclick="window.closeModal()">Отмена</button>
-      <button class="primary" id="saveEditBtn">Сохранить</button>
-    </div>
-  `);
-
-  const nameInput = document.getElementById("editClientName");
-  const phoneInput = document.getElementById("editClientPhone");
-  const serviceSel = document.getElementById("editService");
-  const timeSel = document.getElementById("editTime");
-  const hint = document.getElementById("editHint");
-
-  timeSel.value = booking.time;
-
-  const updateTimes = () => {
-    const duration = Number(serviceSel.selectedOptions[0].dataset.duration);
-    let free = 0;
-    Array.from(timeSel.options).forEach(opt => {
-      const isCurrent = opt.value === booking.time;
-      const available = isCurrent || isRangeFree(dateStr, opt.value, duration);
-      opt.disabled = !available;
-      opt.textContent = available ? opt.value : opt.value + " (занято)";
-      if (available) free++;
-    });
-    hint.textContent = free ? `Доступно: ${free} слотов` : "Нет свободного времени";
-  };
-
-  serviceSel.onchange = updateTimes;
-  setTimeout(updateTimes, 50);
-
-  document.getElementById("saveEditBtn").onclick = async () => {
-    const newName = nameInput.value.trim();
-    const newPhone = phoneInput.value.trim();
-    const newService = store.services.find(s => s.id === serviceSel.value);
-    const newTime = timeSel.value;
-    const comment = document.getElementById("editComment").value.trim();
-
-    if (!newName || !newPhone || !newService) {
-      return toast("Заполните все поля", "error");
-    }
-
-    if (timeSel.selectedOptions[0].disabled && newTime !== booking.time) {
-      return toast("Выберите свободное время", "error");
-    }
-
-    try {
-      await updateDoc(doc(db, "bookings", bookingId), {
-        clientName: newName,
-        clientPhone: newPhone,
-        serviceName: newService.name,
-        duration: newService.duration,
-        time: newTime,
-        comment: comment || null
-      });
-
-      toast("Запись обновлена", "success");
-      if (comment) toast(`Комментарий: ${comment}`, "info");
-      window.closeModal();
-    } catch (e) {
-      toast("Ошибка сохранения", "error");
-    }
-  };
 };

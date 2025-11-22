@@ -19,15 +19,23 @@ export const store = new Proxy(state, {
 
 export const subscribe = (fn) => { subscribers.push(fn); fn(); };
 
-export const nextMonth = () => {
-  if (store.month === 11) { store.month = 0; store.year++; }
-  else store.month++;
-};
+// src/store.js — ИСПРАВЛЕННЫЕ prevMonth и nextMonth (это всё, что нужно!)
 
-export const prevMonth = () => {
-  if (store.month === 0) { store.month = 11; store.year--; }
-  else store.month--;
-};
+export function prevMonth() {
+  const newDate = new Date(store.year, store.month - 1);
+  store.year = newDate.getFullYear();
+  store.month = newDate.getMonth();
+  store.currentDate = newDate;        // ← ЭТО САМОЕ ВАЖНОЕ!
+  notifySubscribers();                // ← принудительно вызываем обновление
+}
+
+export function nextMonth() {
+  const newDate = new Date(store.year, store.month + 1);
+  store.year = newDate.getFullYear();
+  store.month = newDate.getMonth();
+  store.currentDate = newDate;        // ← ЭТО САМОЕ ВАЖНОЕ!
+  notifySubscribers();                // ← принудительно вызываем обновление
+}
 
 export const updateBookingInStore = (id, updates) => {
   store.bookings = store.bookings.map(b => b.id === id ? { ...b, ...updates } : b);

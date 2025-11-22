@@ -1,22 +1,12 @@
-структура 
- /src
-   /calendar
-     events.js
-     mode.js
-     modal.js
-     render.js
-     setup.js
-     state.js
-     utils.js
-   /dom
-    elemets.js
-    forms.js
-    modals.js
-   /firebase
-    firebaseConfig.js
-    firestore.js
-   /utils
-    dateUtils.js
-  main.js
-index.html
-stles.css
+/ (корень)
+├── index.html              ← Главная страница (визитка)
+├── calendar.html           ← Календарь записи
+├── styles.css              ← ЕДИНЫЙ ФАЙЛ СО ВСЕМИ СТИЛЯМИ (ниже)
+└── src/
+    ├── main.js             ← Логика Firebase + авторизация
+    ├── calendar.js         ← Календарь (обновлённый под новый стиль)
+    ├── components.js       ← Форма записи (обновлена под стиль)
+    ├── modal.js
+    ├── store.js
+    ├── telegram.js
+    └── telegram-client.js

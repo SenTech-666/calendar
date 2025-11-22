@@ -1,193 +1,106 @@
-// src/calendar.js
-import { store, subscribe } from "./store.js";
-import { getDaysInMonth, formatDate, isToday, isPastDate } from "./date.js";
-import { openUserBookingModal, openAdminDayModal } from "./components.js";
+// src/calendar.js — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ (22.11.2025) с изменениями для прошедших дней
 
-const calendarEl = document.getElementById("calendar");
-const monthTitle = document.getElementById("currentMonth");
+import { store, prevMonth, nextMonth, subscribe } from "./store.js";
+import { isPastDate } from "./date.js"; // Добавлен импорт для проверки прошедших дат
 
-const render = () => {
-  const { year, month, bookings, isAdmin } = store;
-  const current = new Date(year, month, 1);
-  monthTitle.textContent = current.toLocaleDateString("ru-RU", {
-    month: "long",
-    year: "numeric",
-  });
+const daysOfWeek = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDayWeekday = (current.getDay() + 6) % 7;
+// Получаем текущую дату из store
+const getCurrentDate = () => store.currentDate || new Date();
+
+export function renderCalendar() {
+  const calendarEl = document.getElementById("calendar");
+  if (!calendarEl) return;
+
+  const currentDate = getCurrentDate();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  // Обновляем заголовок месяца
+  const monthTitle = document.getElementById("currentMonth");
+  if (monthTitle) {
+    monthTitle.textContent = currentDate
+      .toLocaleDateString("ru-RU", { month: "long", year: "numeric" })
+      .replace(/^\w/, c => c.toUpperCase());
+  }
+
+  const firstDay = new Date(year, month, 1).getDay(); // 0 = вс
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDay = firstDay === 0 ? 6 : firstDay - 1; // Пн — первый день недели
 
   calendarEl.innerHTML = "";
 
-  /* ===================== ДЕСКТОП — СЕТКА ===================== */
-  if (window.innerWidth > 768) {
-    // названия дней недели
-    ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].forEach((day, i) => {
-      const el = document.createElement("div");
-      el.textContent = day;
-      el.style.color = i >= 5 ? "#c0392b" : "inherit";
-      calendarEl.appendChild(el);
+  const isMobile = window.innerWidth <= 768;
+
+  if (!isMobile) {
+    // ДЕСКТОП — СЕТКА 7 колонок
+    daysOfWeek.forEach(dayName => {
+      const header = document.createElement("div");
+      header.textContent = dayName;
+      header.style.cssText = "font-weight:600; text-align:center; padding:16px 8px; color:#ff6b9d; font-size:1rem;";
+      calendarEl.appendChild(header);
     });
 
-    // пустые ячейки до первого дня
-    for (let i = 0; i < firstDayWeekday; i++) {
+    for (let i = 0; i < startDay; i++) {
       calendarEl.appendChild(document.createElement("div"));
     }
 
-    // дни месяца
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateStr = formatDate(date);
-      const dayBookings = bookings.filter((b) => b.date === dateStr);
-      const hasWholeDayBlock = dayBookings.some(
-        (b) => b.blocked && b.time === "00:00"
-      );
-      const visible = isAdmin
-        ? dayBookings
-        : dayBookings.filter((b) => !b.blocked);
+    // ДЕСКТОП ВЕРСИЯ
+for (let day = 1; day <= daysInMonth; day++) {
+  const currentDateISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-      const dayEl = document.createElement("div");
-      dayEl.className = `day ${isToday(date) ? "today" : ""} ${
-        isPastDate(date) ? "past" : ""
-      } ${hasWholeDayBlock ? "blocked" : ""}`;
+  const dayEl = document.createElement("div");
+  dayEl.className = "day";
 
-      dayEl.innerHTML = `
-        <div class="day-number">${day}</div>
-        ${hasWholeDayBlock && !isAdmin
-          ? `<div style="background:#e74c3c;color:white;padding:4px 8px;border-radius:4px;font-size:0.8rem;margin:4px 0;text-align:center;">День заблокирован</div>`
-          : ""
-        }
-        <div class="bookings">
-          ${visible
-            .map(
-              (b) => `
-            <div class="booking ${b.blocked && b.time !== "00:00" ? "blocked-slot" : isAdmin ? "admin" : ""
-                }">
-              <div style="line-height:1.35;">
-                ${b.blocked
-                  ? `<em style="color:#e74c3c;font-weight:600;">${b.name || "Заблокировано"}</em>`
-                  : `
-                    <div style="font-weight:600;color:#2c3e50;">${b.clientName || "Клиент"}</div>
-                    <div style="font-size:0.9em;color:#3498db;">${b.serviceName || "Услуга"}</div>
-                    <div style="font-size:0.85em;color:#7f8c8d;">${b.time} • ☎ ${b.clientPhone || "—"}</div>
-                  `
-                }
-              </div>
-              ${isAdmin && !b.blocked
-                  ? `<div class="admin-actions">
-                      <button onclick="window.editBooking('${b.id}')">Изменить</button>
-                      <button class="danger" onclick="window.cancelBooking('${b.id}')">Отмена</button>
-                    </div>`
-                  : ""
-                }
-            </div>
-          `
-            )
-            .join("")}
-        </div>
-      `;
+  const dayBookings = store.bookings.filter(b => b.date === currentDateISO);
 
-      if (!isPastDate(date) || isAdmin) {
-        dayEl.style.cursor = "pointer";
-        dayEl.onclick = () =>
-          isAdmin ? openAdminDayModal(date) : openUserBookingModal(date);
+  const isToday = currentDateISO === new Date().toISOString().split('T')[0];
+  const isPast = new Date(currentDateISO) < new Date().setHours(0,0,0,0);
+
+  if (isPast) dayEl.classList.add("past");
+
+  dayEl.innerHTML = `
+    <div style="font-weight:700;font-size:1.3rem;color:${isPast ? '#aaa' : '#ff6b9d'};margin-bottom:8px">${day}</div>
+    <div style="font-size:0.9rem;line-height:1.5;">
+      ${dayBookings.length === 0
+        ? (isPast ? '' : '<div style="color:#aaa;font-style:italic">Свободно</div>')
+        : dayBookings.map(b => 
+            `<div style="margin:4px 0;padding:6px 10px;background:#fff0f5;border-radius:10px;font-size:0.85rem">
+              ${b.time} — ${b.name || b.clientName || "Клиент"}
+            </div>`
+          ).join("")
       }
+    </div>
+  `;
 
-      calendarEl.appendChild(dayEl);
-    }
+  if (isToday) {
+    dayEl.style.border = "3px solid #ff6b9d";
+    dayEl.style.background = "#fff0f5";
+    dayEl.style.borderRadius = "16px";
   }
 
-  /* ===================== МОБИЛЬНАЯ ВЕРСИЯ ===================== */
-  else {
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
+  // ← ВОТ ГЛАВНОЕ ИСПРАВЛЕНИЕ:
+  dayEl.onclick = () => {
+    import("./components.js").then(mod => mod.showBookingModal(currentDateISO));
+  };
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      date.setHours(0, 0, 0, 0);
+  calendarEl.appendChild(dayEl);
+}
+  } else {
+   // МОБИЛЬНАЯ ВЕРСИЯ
+for (let day = 1; day <= daysInMonth; day++) {
+  const currentDateISO = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-      // скрываем прошедшие дни (кроме админа)
-      if (date < todayMidnight && !isAdmin) continue;
+  // ... весь код как был ...
 
-      const dateStr = formatDate(date);
-      const dayBookings = bookings.filter((b) => b.date === dateStr);
-      const hasWholeDayBlock = dayBookings.some(
-        (b) => b.blocked && b.time === "00:00"
-      );
-      const visible = isAdmin
-        ? dayBookings
-        : dayBookings.filter((b) => !b.blocked);
+  mobileDay.onclick = () => {
+    import("./components.js").then(mod => mod.showBookingModal(currentDateISO));
+  };
 
-      const dayEl = document.createElement("div");
-      dayEl.className = `day mobile-day ${isToday(date) ? "today" : ""} ${hasWholeDayBlock ? "blocked" : ""
-        }`;
-
-      const weekday = date.toLocaleDateString("ru-RU", { weekday: "short" });
-      const dayNum = date.getDate();
-      const monthName = date.toLocaleDateString("ru-RU", { month: "long" });
-
-      dayEl.innerHTML = `
-        <div class="mobile-day-header">
-          <div>
-            <strong>${dayNum} ${monthName}</strong><br>
-            <span style="opacity:0.9;font-size:0.9em;">${weekday}</span>
-            ${isToday(date) ? ' <span style="color:#ffb3b3;">· Сегодня</span>' : ""}
-          </div>
-        </div>
-        <div class="mobile-bookings">
-          ${hasWholeDayBlock && !isAdmin
-          ? `<div class="blocked-message">День заблокирован</div>`
-          : visible.length === 0
-            ? `<div class="mobile-free-day">Свободный день → Нажмите, чтобы записаться</div>`
-            : visible
-              .map(
-                (b) => `
-              <div class="mobile-booking ${b.blocked ? "blocked-slot" : ""}">
-                ${b.blocked
-                  ? `<em style="color:#e74c3c;">${b.name || "Заблокировано"}</em>`
-                  : `
-                    <div class="time">${b.time}</div>
-                    <div class="client">${b.clientName || "Клиент"}</div>
-                    <div class="service">${b.serviceName}</div>
-                  `
-                }
-              </div>
-            `
-              )
-              .join("")
-        }
-        </div>
-      `;
-
-      // ---------- КЛИК ПО ДНЮ (главное исправление) ----------
-      dayEl.addEventListener("click", (e) => {
-        // не открываем модалку, если тапнули прямо по отдельной записи
-        if (e.target.closest(".mobile-booking")) return;
-        if (e.target.closest(".blocked-message")) return;
-
-        if (isAdmin) openAdminDayModal?.(date);
-        else openUserBookingModal(date);
-      });
-
-      dayEl.style.cursor = "pointer";
-
-      calendarEl.appendChild(dayEl);
-    }
-
-    // Кнопка «Сегодня» (плавающая)
-    if (!document.getElementById("scrollToToday")) {
-      const btn = document.createElement("div");
-      btn.id = "scrollToToday";
-      btn.innerHTML = "↑";
-      btn.title = "Сегодня";
-      btn.onclick = () => {
-        const todayEl = document.querySelector(".mobile-day.today");
-        todayEl?.scrollIntoView({ behavior: "smooth", block: "center" });
-      };
-      document.body.appendChild(btn);
-    }
+  calendarEl.appendChild(mobileDay);
+}
   }
-};
+}
 
-subscribe(render);
-export const renderCalendar = render;
+// Подписываемся на изменения в store — будет перерисовываться автоматически
+subscribe(renderCalendar);

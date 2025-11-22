@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Запись • Анна</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="app">
+    <header class="header" style="text-align:center;position:relative;padding:20px;">
+      <button onclick="location.href='index.html'" style="position:absolute;left:20px;top:20px;padding:12px 24px;border-radius:50px;background:#ff8fa3;color:white;border:none;">
+        ← На главную
+      </button>
+      <h1 style="color:#ff6b9d;font-family:'Playfair Display',serif;">Запись на маникюр</h1>
+    </header>
+
+  <div class="month-nav">
+  <button id="prevMonth" class="nav-arrow">‹</button>
+  <h2 id="currentMonth"></h2>
+  <button id="nextMonth" class="nav-arrow">›</button>
+  </div>
+
+    <div id="calendar"></div>
+
+    <div class="admin-controls" style="display:none;margin:30px auto;text-align:center;">
+      <label>Запрет записи за <input type="number" id="timeLimit" min="0" value="2"> часов</label>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+  <!-- Твои модули -->
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
