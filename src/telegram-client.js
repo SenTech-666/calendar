@@ -1,37 +1,41 @@
 // src/telegram-client.js
-const TELEGRAM_TOKEN = "8543613937:AAGAHTi7dC6XQv9eML9xnN7ju_CprS36OO4"; // ← ВСТАВЬ СВОЙ ТОКЕН
+const TELEGRAM_TOKEN = "8543613937:AAGAHTi7dC6XQv9eML9xnN7ju_CprS36OO4"; // ← ТОТ ЖЕ ТОКЕН, ЧТО И ДЛЯ ТЕБЯ
 
-export const sendTelegramToClient = async (chatId, name, service, duration, date, time, isReminder = false) => {
-  if (!chatId || !/^\d+$/.test(chatId)) {
-    console.log("Telegram ID не указан или некорректен");
-    return false;
+export const sendConfirmationToClient = async (telegramId, name, service, duration, date, time) => {
+  if (!telegramId || !telegramId.toString().match(/^-?\d+$/)) {
+    console.log("Telegram ID не указан — подтверждение не отправлено");
+    return;
   }
 
-  const text = isReminder 
-    ? `<b>Напоминание!</b>\n\nЧерез час у вас запись:\n\n${service} (${duration} мин)\n${date}, ${time}\n\nЖдём вас!`
-    : `Запись подтверждена!\n\n${service} (${duration} мин)\n${date}, ${time}\n\nСпасибо! До встречи`;
+  const text = `
+${name}, ваша запись подтверждена! 
+
+${service} (${duration} мин)
+${date}, ${time}
+
+Спасибо! До встречи ❤️
+  `.trim();
+
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: chatId,
+        chat_id: telegramId,
         text: text,
         parse_mode: "HTML"
       })
     });
 
-    if (res.ok) {
-      console.log(`${isReminder ? "Напоминание" : "Подтверждение"} отправлено клиенту:`, name);
-      return true;
-    } else {
+    if (!res.ok) {
       const err = await res.json();
-      console.warn("Ошибка Telegram:", err.description);
-      return false;
+      console.warn("Не удалось отправить клиенту:", err.description);
+    } else {
+      console.log("Подтверждение отправлено клиенту в Telegram:", name);
     }
   } catch (err) {
-    console.warn("Ошибка сети при отправке в Telegram:", err);
-    return false;
+    console.warn("Ошибка отправки в Telegram клиенту:", err);
   }
 };

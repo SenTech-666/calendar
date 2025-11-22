@@ -176,7 +176,7 @@ showModal(`
 
     // ───── Подтверждение клиенту в Telegram ─────
     if (telegramId) {
-      sendTelegramToClient(
+     sendConfirmationToClient(
         telegramId,
         name,
         service.name,

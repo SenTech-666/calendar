@@ -1,317 +1,508 @@
-/* === ОСНОВНЫЕ СТИЛИ === */
-* { box-sizing: border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* ===== Сброс и базовые стили ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background: #f8fafc;
-  color: #2d3748;
-  line-height: 1.5;
 }
 
-/* Контейнер календаря */
-#app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px;
+html {
+  font-size: 16px;
 }
 
-/* Заголовок и кнопки управления */
-#header {
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  color: #2c3e50;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* ===== Цветовая палитра ===== */
+:root {
+  --primary: #4361ee;
+  --primary-light: #5a75f0;
+  --primary-dark: #3a56d4;
+  --success: #06d6a0;
+  --danger: #ef476f;
+  --warning: #ffd166;
+  --info: #118ab2;
+  --dark: #2d3436;
+  --light: #f8f9fa;
+  --gray: #95a5a6;
+  --border: #dfe6e9;
+  --shadow: 0 10px 30px rgba(67, 97, 238, 0.15);
+  --radius: 16px;
+}
+
+/* ===== Заголовки и кнопки ===== */
+h1, h2, h3, h4 {
+  color: var(--dark);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+h1 { font-size: 2.2rem; }
+h2 { font-size: 1.8rem; }
+h3 { font-size: 1.5rem; }
+
+button {
+  font-family: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-size: 1rem;
+}
+
+button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+button:active { transform: translateY(0); }
+
+/* Кнопки */
+.primary   { background: var(--primary); color: white; }
+.primary:hover   { background: var(--primary-dark); }
+
+.danger    { background: var(--danger); color: white; }
+.danger:hover    { background: #e03e65; }
+
+.success   { background: var(--success); color: white; }
+.success:hover   { background: #04c589; }
+
+.secondary { background: #ecf0f1; color: var(--dark); }
+.secondary:hover { background: #dfe6e9; }
+
+/* ===== Шапка ===== */
+.header {
   text-align: center;
-  margin-bottom: 20px;
-  padding: 16px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  padding: 20px 30px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.header h1 {
+  color: var(--primary);
+  font-size: 2.4rem;
+}
+
+/* ===== Навигация по месяцам ===== */
+.month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 30px 0;
+  background: white;
+  padding: 15px 25px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 #currentMonth {
-  font-size: 1.8rem;
+  font-size: 1.9rem;
   font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 12px;
+  color: var(--primary-dark);
 }
 
-.controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-button {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-button:hover { transform: translateY(-2px); }
-
-#prevMonth, #nextMonth {
-  background: #4299e1;
+.month-nav button {
+  background: var(--primary);
   color: white;
-  width: 50px;
-  height: 50px;
-  font-size: 1.4rem;
+  padding: 12px 28px;
+  font-size: 1.1rem;
 }
 
-#toggleMode {
-  background: #95a5a6;
-  color: white;
-}
-
-#toggleMode.admin { background: #27ae60; }
-
-.primary { background: #4361ee; color: white; }
-.secondary { background: #e2e8f0; color: #4a5568; }
-.danger { background: #e53e3e; color: white; }
-
-/* === КАЛЕНДАРЬ === */
+/* ===== Календарь ===== */
 #calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 12px;
-  background: white;
-  padding: 16px;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  font-size: 0.95rem;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px;
 }
 
-/* Дни недели */
-#calendar > div:first-child ~ div:nth-child(-n+7) {
+.weekdays {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 16px;
+  margin-bottom: 10px;
   font-weight: 700;
-  text-align: center;
-  padding: 12px 8px;
-  background: #4c51bf;
-  color: white;
-  border-radius: 10px;
+  color: var(--primary);
+  font-size: 1.1rem;
 }
 
-/* Ячейки дней — АДАПТИВНЫЕ! */
 .day {
-  background: #ffffff;
-  border: 2px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 10px 8px;
-  min-height: 110px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  flex-direction: column;
+  background: white;
+  border-radius: var(--radius);
+  min-height: 130px;
+  padding: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.day:hover {
-  border-color: #4361ee;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(67, 97, 238, 0.15);
-}
-
-.day.today {
-  border-color: #4361ee;
-  background: #ebf4ff;
-}
-
-.day.blocked {
-  background: #fff5f5;
-  border-color: #fc8181;
-  opacity: 0.8;
+.day:hover:not(.past):not(.blocked) {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 35px rgba(67, 97, 238, 0.25);
 }
 
 .day-number {
   font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: 6px;
+  font-size: 1.4rem;
+  color: var(--dark);
   text-align: center;
+  margin-bottom: 8px;
 }
 
+.day.today {
+  border: 3px solid var(--primary);
+  background: linear-gradient(135deg, #eef1ff 0%, #f8faff 100%);
+}
+
+.day.past {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #f1f2f6;
+}
+
+.day.blocked {
+  background: linear-gradient(135deg, #ffe6e9 0%, #ffd4d9 100%) !important;
+  border: 2px dashed var(--danger) !important;
+  opacity: 0.9;
+}
+
+.day.blocked .day-number {
+  color: var(--danger);
+}
+
+.day.blocked::after {
+  content: "Заблокировано";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+/* Записи в дне */
 .bookings {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  overflow: hidden;
+  font-size: 0.85rem;
+  margin-top: 8px;
 }
 
 .booking {
-  background: #edf2f7;
-  border-radius: 10px;
-  padding: 9px;
-  font-size: 0.85rem;
-  border-left: 5px solid #4361ee;
-  line-height: 1.35;
-}
-
-.booking.blocked-slot {
-  background: #ffebee !important;
-  border-left-color: #e53e3e !important;
-  position: relative;
-}
-
-.booking.blocked-slot::before {
-  content: "Блок";
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: #e53e3e;
-  color: white;
-  font-size: 0.65rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-/* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
-@media (max-width: 768px) {
-  #app { padding: 12px; }
-
-  #currentMonth {
-    font-size: 1.5rem;
-  }
-
-  .controls {
-    gap: 10px;
-  }
-
-  button {
-    padding: 14px 18px;
-    font-size: 1rem;
-  }
-
-  #prevMonth, #nextMonth {
-    width: 48px;
-    height: 48px;
-  }
-
-  #calendar {
-    gap: 10px;
-    padding: 12px;
-    font-size: 0.9rem;
-  }
-
-  .day {
-    min-height: 100px;
-    padding: 10px 6px;
-    border-radius: 12px;
-  }
-
-  .day-number {
-    font-size: 1.15rem;
-  }
-
-  .booking {
-    padding: 8px;
-    font-size: 0.82rem;
-  }
-
-  /* На маленьких экранах — по 1 дню в строке */
-  @media (max-width: 480px) {
-    #calendar {
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-
-    /* Дни недели скрываем на очень маленьких экранах */
-    #calendar > div:first-child ~ div:nth-child(-n+7) {
-      display: none;
-    }
-
-    .day {
-      min-height: 90px;
-      padding: 14px;
-      border-radius: 16px;
-    }
-
-    .day-number {
-      font-size: 1.3rem;
-      font-weight: 800;
-    }
-
-    .booking {
-      padding: 10px;
-      font-size: 0.95rem;
-    }
-  }
-}
-
-/* === МОДАЛЬНЫЕ ОКНА === */
-.modal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(67, 97, 238, 0.1);
+  border-left: 4px solid var(--primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin: 4px 0;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
 }
 
-.modal-content {
+.booking.admin {
+  background: rgba(67, 97, 238, 0.15);
+  font-weight: 500;
+}
+
+.admin-actions button {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  margin-left: 4px;
+}
+
+/* ===== Модальные окна ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.modal {
   background: white;
-  border-radius: 20px;
-  padding: 24px;
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  padding: 35px;
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  animation: modalPop 0.4s ease;
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .modal h3 {
-  margin-top: 0;
-  font-size: 1.5rem;
-  color: #2d3748;
+  text-align: center;
+  color: var(--primary);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
 }
 
-label {
+.modal label {
   display: block;
-  margin: 16px 0 6px;
+  margin: 18px 0 8px;
   font-weight: 600;
-  color: #4a5568;
+  color: var(--dark);
 }
 
-input, select {
+.modal input,
+.modal select {
   width: 100%;
   padding: 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--border);
   border-radius: 12px;
   font-size: 1rem;
+  transition: border 0.3s;
 }
 
-input:focus, select:focus {
+.modal input:focus,
+.modal select:focus {
   outline: none;
-  border-color: #4361ee;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
 }
 
-.buttons {
+.modal .buttons {
+  margin-top: 30px;
+  text-align: right;
   display: flex;
   gap: 12px;
-  margin-top: 24px;
+  justify-content: flex-end;
+}
+
+/* ===== Тосты ===== */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 32px;
+  border-radius: 14px;
+  color: white;
+  font-weight: 600;
+  z-index: 10000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  animation: toastSlide 0.5s ease;
+  min-width: 280px;
+  text-align: center;
+}
+
+@keyframes toastSlide {
+  from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ===== Управление услугами ===== */
+.service-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  background: var(--light);
+  border-radius: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
   flex-wrap: wrap;
 }
 
-.buttons button {
+.service-item input[type="text"] {
   flex: 1;
-  min-width: 120px;
+  min-width: 200px;
 }
 
-/* Тосты */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  z-index: 10000;
-  font-weight: 600;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+.service-item input[type="number"] {
+  width: 100px;
+}
+
+/* ===== Админ-панель ===== */
+.admin-controls {
+  text-align: center;
+  margin: 30px 0;
+  padding: 20px;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ===== Адаптивность ===== */
+@media (max-width: 768px) {
+  .header { flex-direction: column; text-align: center; }
+  .month-nav { flex-direction: column; gap: 15px; }
+  .modal { padding: 25px; }
+  #calendar { gap: 12px; }
+  .day { min-height: 110px; padding: 10px; }
+}
+/* === МОБИЛЬНАЯ ВЕРСИЯ — ВЕРТИКАЛЬНЫЙ КАЛЕНДАРЬ === */
+@media (max-width: 768px) {
+  #calendar {
+    display: block !important;
+    gap: 0;
+  }
+
+  .day {
+    margin: 0 auto 20px;
+    max-width: 420px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+  }
+
+  .day-number {
+    background: var(--primary);
+    color: white;
+    padding: 12px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .day.today .day-number {
+    background: #e74c3c;
+  }
+
+  .day.blocked {
+    opacity: 0.6;
+    background: #f8f9fa;
+  }
+
+  .day.blocked::after {
+    content: "День заблокирован";
+    display: block;
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    color: #e74c3c;
+    font-weight: 600;
+  }
+
+  .bookings {
+    padding: 12px;
+  }
+
+  .booking {
+    background: #f8f9fa;
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Свободный слот — делаем кликабельным */
+  .booking:empty::after {
+    content: "Записаться";
+    background: var(--success);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+
+  /* Фиксированная кнопка "Сегодня" */
+  #scrollToToday {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--primary);
+    color: white;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    font-size: 2rem;
+    line-height: 56px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(67,97,238,0.4);
+    z-index: 100;
+  }
+}
+/* МОБИЛЬНЫЙ ВЕРТИКАЛЬНЫЙ КАЛЕНДАРЬ — БЕЗ ПРОШЕДШИХ ДНЕЙ */
+@media (max-width: 768px) {
+  .mobile-day {
+    background: white;
+    margin: 16px auto;
+    max-width: 420px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  }
+
+  .mobile-day-header {
+    background: var(--primary);
+    color: white;
+    padding: 16px 20px;
+    font-size: 1.2rem;
+  }
+
+  .mobile-day.today .mobile-day-header {
+    background: #e74c3c;
+  }
+
+  .mobile-bookings {
+    padding: 12px;
+  }
+
+  .mobile-booking {
+    background: #f8f9fa;
+    padding: 14px 16px;
+    margin: 8px 0;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .mobile-booking:hover {
+    background: #e8f4f8;
+  }
+
+  .mobile-free-day {
+    text-align: center;
+    padding: 20px;
+    background: #f0f8ff;
+    border: 2px dashed var(--primary);
+    border-radius: 14px;
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  #scrollToToday {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 28px;
+    line-height: 56px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(67,97,238,0.4);
+    z-index: 100;
+    cursor: pointer;
+  }
 }
