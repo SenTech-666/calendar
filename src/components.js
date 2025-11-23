@@ -19,7 +19,7 @@ const SERVICES = [
 // Генерация времени
 const allTimeSlots = [];
 for (let h = 9; h <= 18; h++) {
-  allTimeSlots.push(`${h.toString().padStart(2,0)}:00`, `${h.toString().padStart(2,0)}:30`);
+  allTimeSlots.push(`${h.toString().padStart(2, 0)}:00`, `${h.toString().padStart(2, 0)}:30`);
 }
 allTimeSlots.pop();
 
@@ -96,7 +96,7 @@ export const openUserBookingModal = (dateStr) => {
   `);
 };
 
-// === АДМИНСКАЯ МОДАЛКА ===
+// === АДМИНСКАЯ МОДАЛКА С ЖИВЫМ ОБНОВЛЕНИЕМ ===
 let currentAdminModalDate = null;
 
 const renderAdminModalContent = () => {
@@ -121,13 +121,13 @@ const renderAdminModalContent = () => {
     <div style="margin-bottom:30px;padding:20px;background:#fff0f5;border-radius:18px">
       <h4 style="color:#ff6b9d;margin-bottom:15px">Блокировка дня</h4>
       ${isBlocked
-        ? `<button class="primary" onclick="unblockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(239,71,111,0.4);font-weight:600">
-             Разблокировать весь день
-           </button>`
-        : `<button class="primary" onclick="blockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(255,107,157,0.3);font-weight:600">
-             Заблокировать весь день
-           </button>`
-      }
+      ? `<button class="primary" onclick="unblockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(239,71,111,0.4);font-weight:600">
+           Разблокировать весь день
+         </button>`
+      : `<button class="primary" onclick="blockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(255,107,157,0.3);font-weight:600">
+           Заблокировать весь день
+         </button>`
+    }
     </div>
 
     <h4 style="margin:20px 0 10px;color:#ff6b9d">Записи (${regular.length})</h4>
@@ -172,14 +172,95 @@ const openAdminDayModal = (dateStr) => {
   };
 };
 
-// === РЕДАКТИРОВАНИЕ, БЛОКИРОВКА, УДАЛЕНИЕ — без изменений ===
-window.editBooking = (id) => { /* ... твой код без изменений ... */ };
-window.saveEdit = async (id, oldDate) => { /* ... твой код без изменений ... */ };
-window.blockDay = async (dateStr) => { /* ... твой код без изменений ... */ };
-window.unblockDay = async (dateStr) => { /* ... твой код без изменений ... */ };
-window.deleteBooking = async (id) => { /* ... твой код без изменений ... */ };
+// === РЕДАКТИРОВАНИЕ ===
+window.editBooking = (id) => {
+  const b = store.bookings.find(x => x.id === id);
+  if (!b) return toast("Запись не найдена", "error");
 
-// === ГЛАВНАЯ ФУНКЦИЯ ЗАПИСИ — С ДОБАВЛЕННЫМ СОХРАНЕНИЕМ ДАННЫХ КЛИЕНТА ===
+  showModal(`
+    <h3 style="color:#ff6b9d;margin-bottom:20px">Редактировать запись</h3>
+    <label>Дата</label>
+    <input type="date" id="editDate" value="${b.date}" />
+    <label>Время</label>
+    <input type="time" id="editTime" value="${b.time}" step="1800" />
+    <label>Услуга</label>
+    <select id="editService">
+      ${SERVICES.map(s => `<option value="${s.id}" ${s.id === (b.serviceId || "1") ? "selected" : ""}>${s.name} (${s.duration} мин)</option>`).join("")}
+    </select>
+    <label>Имя клиента</label>
+    <input type="text" id="editClientName" value="${b.clientName || ""}" />
+    <label>Телефон</label>
+    <input type="tel" id="editClientPhone" value="${b.clientPhone || ""}" />
+    <label>Telegram ID</label>
+    <input type="text" id="editTelegramId" value="${b.telegramId || ""}" />
+    <div class="buttons" style="margin-top:25px;">
+      <button class="secondary" onclick="closeModal()">Отмена</button>
+      <button class="primary" onclick="saveEdit('${id}', '${b.date}')">Сохранить</button>
+    </div>
+  `);
+};
+
+window.saveEdit = async (id, oldDate) => {
+  const newDate = document.getElementById("editDate").value;
+  const newTime = document.getElementById("editTime").value;
+  const serviceId = document.getElementById("editService").value;
+  const service = SERVICES.find(s => s.id === serviceId);
+  const clientName = document.getElementById("editClientName").value.trim();
+  const clientPhone = document.getElementById("editClientPhone").value.trim();
+  const telegramId = document.getElementById("editTelegramId").value.trim();
+
+  if (!newDate || !newTime || !clientName) return toast("Заполните обязательные поля", "error");
+  if (newDate !== oldDate || newTime !== store.bookings.find(b => b.id === id).time) {
+    if (!isRangeFree(newDate, newTime, service.duration)) {
+      return toast("Это время уже занято", "error");
+    }
+  }
+
+  try {
+    await updateDoc(doc(db, "bookings", id), {
+      date: newDate,
+      time: newTime,
+      serviceId, serviceName: service.name, duration: service.duration,
+      clientName, clientPhone, telegramId: telegramId || null,
+      updatedAt: new Date().toISOString()
+    });
+
+    if (telegramId) {
+      await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, newDate, newTime);
+    }
+
+    toast("Запись обновлена", "success");
+    closeModal();
+  } catch (e) {
+    console.error(e);
+    toast("Ошибка сохранения", "error");
+  }
+};
+
+// === БЛОКИРОВКА / РАЗБЛОКИРОВКА / УДАЛЕНИЕ ===
+window.blockDay = async (dateStr) => {
+  if (!confirm("Заблокировать весь день?")) return;
+  await addBooking({ date: dateStr, time: "00:00", blocked: true, clientName: "Мастер" });
+  toast("День заблокирован", "info");
+  closeModal();
+};
+
+window.unblockDay = async (dateStr) => {
+  const entry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
+  if (!entry || !confirm("Разблокировать день?")) return;
+  await deleteDoc(doc(db, "bookings", entry.id));
+  toast("День разблокирован", "success");
+  closeModal();
+};
+
+window.deleteBooking = async (id) => {
+  if (!confirm("Удалить запись?")) return;
+  await deleteDoc(doc(db, "bookings", id));
+  toast("Запись удалена", "info");
+  closeModal();
+};
+
+// === ГЛАВНАЯ ФУНКЦИЯ ЗАПИСИ — С СОХРАНЕНИЕМ ДАННЫХ КЛИЕНТА ===
 window.bookAppointment = async (dateStr) => {
   const clientName = document.getElementById("clientName").value.trim();
   const clientPhone = document.getElementById("clientPhone").value.trim();
@@ -209,7 +290,7 @@ window.bookAppointment = async (dateStr) => {
       await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, dateStr, time);
     }
 
-    // КЛЮЧЕВАЯ ПРАВКА — сохраняем данные клиента для показа только своих записей
+    // СОХРАНЯЕМ ДАННЫЕ КЛИЕНТА — чтобы потом он видел только свою запись
     localStorage.setItem('clientName', clientName);
     localStorage.setItem('clientPhone', clientPhone);
 

@@ -1,4 +1,4 @@
-// src/calendar.js — 100% РАБОЧАЯ ВЕРСИЯ С КОНФИДЕНЦИАЛЬНОСТЬЮ ЗАПИСЕЙ
+// src/calendar.js — 100% РАБОЧАЯ ВЕРСИЯ С КОНФИДЕНЦИАЛЬНОСТЬЮ (23.11.2025)
 
 import { store, subscribe } from "./store.js";
 
@@ -29,12 +29,14 @@ export function renderCalendar() {
   const isMobile = window.innerWidth <= 768;
   const todayISO = new Date().toISOString().split("T")[0];
 
-  // === ФУНКЦИЯ: проверяем, принадлежит ли запись текущему пользователю ===
+  // КЛЮЧЕВАЯ ФУНКЦИЯ — определяет, чья это запись
   const isCurrentUserBooking = (booking) => {
-    if (store.isAdmin) return true;
+    if (store.isAdmin) return true; // админ видит ВСЁ
     const savedPhone = localStorage.getItem('clientPhone');
     const savedName = localStorage.getItem('clientName');
-    return booking.clientPhone === savedPhone || booking.clientName === savedName;
+    if (!savedPhone && !savedName) return false;
+    return booking.clientPhone === savedPhone || 
+           (booking.clientName && savedName && booking.clientName.toLowerCase().includes(savedName.toLowerCase()));
   };
 
   if (!isMobile) {
@@ -66,10 +68,13 @@ export function renderCalendar() {
         ? '<div style="color:#ff6b9d;font-weight:600">Свободно</div>'
         : dayBookings.map(b => {
             if (isCurrentUserBooking(b)) {
+              // СВОЯ ЗАПИСЬ — показываем всё
               return `<div style="margin:6px 0;padding:10px;background:#e8f5e9;border-radius:12px;font-size:0.9rem;border-left:4px solid #4caf50;">
-                        <strong>${b.time}</strong> — ${b.clientName || "Вы"} ${store.isAdmin ? `<br>☎ ${b.clientPhone}` : '(ваша запись)'}
+                        <strong>${b.time}</strong> — ${b.clientName || "Вы"} 
+                        ${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : '(ваша запись)'}
                       </div>`;
             } else {
+              // ЧУЖАЯ ЗАПИСЬ — скрываем
               return `<div style="margin:6px 0;padding:10px;background:#ffe0e0;border-radius:12px;color:#999;font-size:0.9rem;border-left:4px solid #ff6b9d;">
                         <strong>${b.time}</strong> — Занято
                       </div>`;
@@ -110,7 +115,7 @@ export function renderCalendar() {
             if (isCurrentUserBooking(b)) {
               return `<div style="margin:10px 0;padding:14px;background:#e8f5e9;border-radius:16px;font-size:0.95rem;border-left:5px solid #4caf50;">
                         <strong>${b.time}</strong> — ${b.clientName || "Вы"} (ваша запись)
-                        ${store.isAdmin ? `<br>☎ ${b.clientPhone}` : ''}
+                        ${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : ''}
                       </div>`;
             } else {
               return `<div style="margin:10px 0;padding:14px;background:#ffe0e0;border-radius:16px;font-size:0.95rem;color:#999;border-left:5px solid #ff6b9d;">
