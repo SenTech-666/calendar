@@ -1,8 +1,10 @@
-// src/store.js — ФИНАЛЬНАЯ ВЕРСИЯ: текущий месяц НЕ считается прошедшим
+// src/store.js — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ (23.11.2025)
+// Всё отрисовывается, текущий месяц НЕ блокируется, клиенты не могут в прошлое
 
 const state = {
   year: new Date().getFullYear(),
   month: new Date().getMonth(), // 0–11
+  currentDate: new Date(),      // ← ОБЯЗАТЕЛЬНО для отрисовки календаря!
   bookings: [],
   services: [],
   isAdmin: false,
@@ -19,54 +21,62 @@ export const store = new Proxy(state, {
   }
 });
 
-export const subscribe = fn => { subscribers.push(fn); fn(); };
+export const subscribe = (fn) => {
+  subscribers.push(fn);
+  fn(); // вызываем сразу при подписке
+};
 
+// Обновляем все нужные поля за один раз
+function updateMonth(year, month) {
+  store.year = year;
+  store.month = month;
+  store.currentDate = new Date(year, month, 1); // ← это критично для рендера!
+}
+
+// Переход на предыдущий месяц
 export function prevMonth() {
   const newDate = new Date(store.year, store.month - 1);
 
-  // Разрешаем переход назад ТОЛЬКО если:
-  // 1. Это админ ИЛИ
-  // 2. Новый месяц — это текущий месяц или будущий
   const today = new Date();
   const currentYear = today.getFullYear();
-  const currentMonthIndex = today.getMonth(); // 0–11
+  const currentMonthIndex = today.getMonth();
 
   const newYear = newDate.getFullYear();
   const newMonthIndex = newDate.getMonth();
 
-  // Формируем "ключ" месяца: 2025-10 для октября 2025 и т.д.
-  const currentMonthKey = currentYear * 12 + currentMonthIndex;
-  const newMonthKey = newYear * 12 + newMonthIndex;
+  // Уникальный ключ месяца (чтобы сравнить)
+  const currentKey = currentYear * 12 + currentMonthIndex;
+  const newKey = newYear * 12 + newMonthIndex;
 
-  // Запрещаем только если новый месяц СТРОГО раньше текущего (например, октябрь, когда сейчас ноябрь)
-  if (!store.isAdmin && newMonthKey < currentMonthKey) {
+  // Блокируем ТОЛЬКО если месяц СТРОГО раньше текущего
+  if (!store.isAdmin && newKey < currentKey) {
     if (typeof toast === 'function') {
       toast("Запись на прошедшие месяцы невозможна", "error");
     }
-    return; // блокируем переход
+    return;
   }
 
-  // Всё остальное разрешено: текущий месяц и будущие — всегда можно
-  store.year = newDate.getFullYear();
-  store.month = newDate.getMonth();
-  notify();
+  updateMonth(newDate.getFullYear(), newDate.getMonth());
 }
 
+// Переход на следующий месяц
 export function nextMonth() {
   const newDate = new Date(store.year, store.month + 1);
-  store.year = newDate.getFullYear();
-  store.month = newDate.getMonth();
-  notify();
+  updateMonth(newDate.getFullYear(), newDate.getMonth());
 }
 
-function notify() {
-  subscribers.forEach(fn => fn());
-}
-
+// Остальные функции (без изменений)
 export const updateBookingInStore = (id, updates) => {
-  store.bookings = store.bookings.map(b => b.id === id ? { ...b, ...updates } : b);
+  store.bookings = store.bookings.map(b => 
+    b.id === id ? { ...b, ...updates } : b
+  );
 };
 
 export const removeBooking = (id) => {
   store.bookings = store.bookings.filter(b => b.id !== id);
+};
+
+// Дополнительно: если нужно — можно экспортировать для админа
+export const setAdminMode = (value) => {
+  store.isAdmin = value;
 };
