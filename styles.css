@@ -11,6 +11,48 @@
   --shadow: 0 10px 30px rgba(255,107,157,0.18);
   --radius: 20px;
 }
+:root {
+  --primary-color: #ff6b9d;
+  --accent-color: #ff8fb3;
+  --success-color: #4caf50;
+  --danger-color: #ff6b9d;
+  --bg-color: #ffffff;
+  --text-color: #333333;
+  --card-bg: #ffffff;
+  --border-color: rgba(255, 107, 157, 0.2);
+  --shadow-color: rgba(255, 107, 157, 0.3);
+}
+
+body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* Кнопки */
+button.primary, .primary {
+  background: var(--primary-color) !important;
+  box-shadow: 0 6px 20px var(--shadow-color) !important;
+}
+button:hover { opacity: 0.9; }
+
+/* Карточки дня */
+.mobile-day, .day {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 15px var(--shadow-color);
+}
+
+/* Заголовки */
+h1, h2, h3, #currentMonth, .mobile-day-header {
+  color: var(--primary-color) !important;
+}
+
+/* Занятые записи */
+div[style*="background:#ffe0e0"], div[style*="border-left:5px solid #ff6b9d"] {
+  border-left-color: var(--danger-color) !important;
+  background: rgba(255, 107, 157, 0.1) !important;
+}
 
 *, *::before, *::after {
   box-sizing: border-box;
