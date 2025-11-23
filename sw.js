@@ -1,21 +1,22 @@
-// sw.js — Service Worker для PWA (оффлайн + кэш)
+// sw.js — Service Worker для PWA (оффлайн + кэш), адаптированный для /calendar/
 const CACHE_NAME = 'nails-app-v3';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/calendar.html',
-  '/styles.css',
-  '/src/main.js',
-  '/src/store.js',
-  '/src/components.js',
-  '/src/modal.js',
-  '/src/toast.js',
-  '/src/telegram.js',
-  '/src/telegram-client.js',
-  '/src/firebase.js',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/manifest.json'
+  '/calendar/',  // Корень поддиректории
+  '/calendar/index.html',
+  '/calendar/calendar.html',
+  '/calendar/styles.css',
+  '/calendar/src/main.js',
+  '/calendar/src/store.js',
+  '/calendar/src/components.js',
+  '/calendar/src/modal.js',
+  '/calendar/src/toast.js',
+  '/calendar/src/telegram.js',
+  '/calendar/src/telegram-client.js',
+  '/calendar/src/firebase.js',
+  '/calendar/src/calendar.js',  // Если есть
+  '/calendar/icon-192.png',
+  '/calendar/icon-512.png',
+  '/calendar/manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -36,4 +37,3 @@ self.addEventListener('fetch', event => {
       .then(response => response || fetch(event.request))
   );
 });
-
