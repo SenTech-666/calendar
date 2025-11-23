@@ -1,8 +1,8 @@
-// src/store.js — ЗАПРЕТ НА ПРОШЛОЕ ДЛЯ КЛИЕНТОВ + ТОСТ
+// src/store.js — ФИНАЛЬНАЯ ВЕРСИЯ: текущий месяц НЕ считается прошедшим
 
 const state = {
   year: new Date().getFullYear(),
-  month: new Date().getMonth(),
+  month: new Date().getMonth(), // 0–11
   bookings: [],
   services: [],
   isAdmin: false,
@@ -23,19 +23,30 @@ export const subscribe = fn => { subscribers.push(fn); fn(); };
 
 export function prevMonth() {
   const newDate = new Date(store.year, store.month - 1);
+
+  // Разрешаем переход назад ТОЛЬКО если:
+  // 1. Это админ ИЛИ
+  // 2. Новый месяц — это текущий месяц или будущий
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const currentYear = today.getFullYear();
+  const currentMonthIndex = today.getMonth(); // 0–11
 
-  const firstDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+  const newYear = newDate.getFullYear();
+  const newMonthIndex = newDate.getMonth();
 
-  // ЗАПРЕТ ДЛЯ КЛИЕНТОВ: нельзя в прошедший месяц
-  if (!store.isAdmin && firstDayOfNewMonth < today) {
+  // Формируем "ключ" месяца: 2025-10 для октября 2025 и т.д.
+  const currentMonthKey = currentYear * 12 + currentMonthIndex;
+  const newMonthKey = newYear * 12 + newMonthIndex;
+
+  // Запрещаем только если новый месяц СТРОГО раньше текущего (например, октябрь, когда сейчас ноябрь)
+  if (!store.isAdmin && newMonthKey < currentMonthKey) {
     if (typeof toast === 'function') {
-      toast("Запись на прошедшие даты невозможна", "error");
+      toast("Запись на прошедшие месяцы невозможна", "error");
     }
-    return;
+    return; // блокируем переход
   }
 
+  // Всё остальное разрешено: текущий месяц и будущие — всегда можно
   store.year = newDate.getFullYear();
   store.month = newDate.getMonth();
   notify();
