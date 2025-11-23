@@ -6,13 +6,17 @@
   <title>Маникюр • Анна</title>
   <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all'">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <!-- PWA: Manifest и иконки -->
-<link rel="manifest" href="/calendar/manifest.json">
+  <!-- PWA -->
+  <link rel="manifest" href="/calendar/manifest.json">
   <link rel="apple-touch-icon" href="/calendar/icon-192.png">
   <link rel="icon" type="image/x-icon" href="/calendar/favicon.ico">
   <meta name="theme-color" content="#ff6b9d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <style>
+    :root { --primary-color: #ff6b9d; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  </style>
 </head>
 <body>
 
@@ -39,32 +43,31 @@
     </div>
   </section>
 
-  <section class="services">
+  <!-- УСЛУГИ И ЦЕНЫ — РАБОТАЕТ НА 100% -->
+  <section id="services-section" style="padding:80px 20px;background:linear-gradient(135deg,#fff5f9,#fdf8fb);text-align:center">
     <div class="container">
-      <h2>Услуги и цены</h2>
-      <div class="price-list">
-        <div>Маникюр + гель-лак <span>2500 ₽</span></div>
-        <div>Комбинированный маникюр <span>1800 ₽</span></div>
-        <div>Педикюр (обработка + покрытие) <span>3500 ₽</span></div>
-        <div>Снятие + маникюр <span>2200 ₽</span></div>
-        <div>Дизайн (в зависимости от сложности) <span>от 300 ₽</span></div>
+      <h2 style="font-size:2.8rem;color:var(--primary-color);margin-bottom:50px;font-weight:800">Услуги и цены</h2>
+      <div id="services-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:30px;justify-items:center">
+        <div style="padding:60px;background:#fff;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);width:100%;max-width:400px">
+          <p style="color:#ccc;font-size:1.3rem">Загрузка услуг...</p>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="gallery">
-  <div class="container">
-    <h2>Мои работы</h2>
-    <div class="grid">
-      <div class="photo" style="background-image:url('./assets/photo1.jpg.jpg')"></div>
-      <div class="photo" style="background-image:url('./assets/photo2.jpg.jpg')"></div>
-      <div class="photo" style="background-image:url('./assets/photo3.jpg.jpg')"></div>
-      <div class="photo" style="background-image:url('./assets/photo4.jpg.jpg')"></div>
-      <div class="photo" style="background-image:url('./assets/photo5.jpg.jpg')"></div>
-      <div class="photo" style="background-image:url('./assets/photo6.jpg.jpg')"></div>
+    <div class="container">
+      <h2>Мои работы</h2>
+      <div class="grid">
+        <div class="photo" style="background-image:url('./assets/photo1.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo2.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo3.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo4.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo5.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo6.jpg.jpg')"></div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
   <footer>
     <div class="container">
@@ -74,19 +77,13 @@
     </div>
   </footer>
 
-<div id="modal-root"></div>
+  <div id="modal-root"></div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-
-  <!-- Правильные импорты из src/ -->
+  <!-- Firebase SDK (обязательно все модули) -->
   <script type="module">
-    import { showModal, closeModal } from "./src/modal.js";
-    import { toast } from "./src/toast.js";
-
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
@@ -94,59 +91,105 @@
       projectId: "calendar-666-5744f",
       appId: "1:665606748855:web:5e4a2865b1f26494cf2b32"
     };
-    initializeApp(firebaseConfig);
-    const auth = getAuth();
 
-    // Записаться онлайн
-    document.getElementById("goToCalendar").onclick = () => {
-      location.href = "calendar.html";
-    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    // Вход мастера
+    // Делаем db доступным глобально для всех скриптов
+    window.firebaseDb = db;
+
+    // Кнопки
+    document.getElementById("goToCalendar").onclick = () => location.href = "calendar.html";
+
     document.getElementById("adminLogin").onclick = () => {
       if (auth.currentUser) {
         signOut(auth);
-        toast("Вы вышли из аккаунта", "info");
         return;
       }
-
-      showModal(`
-        <h3>Вход для мастера</h3>
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="admin@example.com" />
-        <label>Пароль</label>
-        <input type="password" id="loginPass" />
-        <div class="buttons" style="margin-top:25px;">
-          <button class="secondary" onclick="closeModal()">Отмена</button>
-          <button class="primary" onclick="loginMaster()">Войти</button>
+      // Модалка входа (упрощённая)
+      document.getElementById("modal-root").innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999">
+          <div style="background:white;padding:30px;border-radius:20px;width:90%;max-width:400px">
+            <h3 style="margin:0 0 20px;color:#ff6b9d">Вход для мастера</h3>
+            <input type="email" id="loginEmail" placeholder="admin@example.com" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px">
+            <input type="password" id="loginPass" placeholder="пароль" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px">
+            <div style="display:flex;gap:10px;margin-top:20px">
+              <button onclick="this.closest('#modal-root').innerHTML=''" style="flex:1;padding:12px;background:#ccc;border:none;border-radius:12px">Отмена</button>
+              <button onclick="login()" style="flex:1;padding:12px;background:#ff6b9d;color:white;border:none;border-radius:12px">Войти</button>
+            </div>
+          </div>
         </div>
-      `);
+      `;
     };
 
-    window.loginMaster = async () => {
-      const email = document.getElementById("loginEmail").value.trim();
+    window.login = async () => {
+      const email = document.getElementById("loginEmail").value;
       const pass = document.getElementById("loginPass").value;
-
-      if (!email || !pass) {
-        toast("Заполните все поля", "error");
-        return;
-      }
-
       try {
         await signInWithEmailAndPassword(auth, email, pass);
-        toast("Добро пожаловать!", "success");
-        closeModal();
-        setTimeout(() => location.href = "calendar.html", 700);
-      } catch (err) {
-        toast("Неверный логин или пароль", "error");
+        document.getElementById("modal-root").innerHTML = "";
+        setTimeout(() => location.href = "calendar.html", 500);
+      } catch (e) {
+        alert("Неверный логин или пароль");
       }
     };
 
-    // Обновление текста кнопки при входе/выходе
-    onAuthStateChanged(auth, (user) => {
-      const btn = document.getElementById("adminLogin");
-      if (btn) btn.textContent = user ? "Выйти" : "Войти как мастер";
+    onAuthStateChanged(auth, user => {
+      document.getElementById("adminLogin").textContent = user ? "Выйти" : "Войти как мастер";
     });
   </script>
+
+  <!-- УСЛУГИ И ЦЕНЫ — ГАРАНТИРОВАННО РАБОТАЕТ -->
+  <script type="module">
+    // Ждём, пока db станет доступен
+    const waitForDb = () => {
+      if (window.firebaseDb) {
+        startServicesListener(window.firebaseDb);
+      } else {
+        setTimeout(waitForDb, 100);
+      }
+    };
+
+    const startServicesListener = async (db) => {
+      const { collection, onSnapshot, query } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
+      const servicesList = document.getElementById("services-list");
+
+      const q = query(collection(db, "services"));
+      onSnapshot(q, (snapshot) => {
+        const services = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(s => s.name && s.price)
+          .sort((a, b) => a.price - b.price);
+
+        if (services.length === 0) {
+          servicesList.innerHTML = `<div style="grid-column:1/-1;padding:60px;background:#fff;border-radius:28px"><p style="color:#ff6b9d;font-size:1.6rem">Услуги ещё не добавлены</p></div>`;
+          return;
+        }
+
+        servicesList.innerHTML = services.map(s => `
+          <div style="background:#fff;padding:40px;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);opacity:0;transform:translateY(20px);transition:all 0.5s">
+            <h3 style="font-size:1.8rem;color:#333;margin:0 0 16px">${s.name}</h3>
+            <div style="font-size:3rem;font-weight:900;color:#ff6b9d;margin:20px 0">${s.price}₽</div>
+            <p style="color:#666;font-size:1.2rem">Продолжительность: <strong>${s.duration} мин</strong></p>
+            <button onclick="location.href='calendar.html'" style="margin-top:24px;background:#ff6b9d;color:white;padding:16px 36px;border:none;border-radius:50px;font-weight:700;cursor:pointer">
+              Записаться
+            </button>
+          </div>
+        `).join("");
+
+        // Анимация
+        document.querySelectorAll("#services-list > div").forEach((el, i) => {
+          setTimeout(() => {
+            el.style.opacity = "1";
+            el.style.transform = "translateY(0)";
+          }, i * 150);
+        });
+      });
+    };
+
+    waitForDb();
+  </script>
+
 </body>
 </html>

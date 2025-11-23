@@ -1,31 +1,117 @@
-// src/components.js — АБСОЛЮТНО ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ С КОНФИДЕНЦИАЛЬНОСТЬЮ (23.11.2025)
+
+// src/components.js — УСЛУГИ У КЛИЕНТА ВСЕГДА ИЗ FIREBASE + МГНОВЕННОЕ ОБНОВЛЕНИЕ (23.11.2025)
 
 import { store, subscribe } from "./store.js";
 import { showModal, closeModal } from "./modal.js";
 import { toast } from "./toast.js";
-import { addBooking } from "./firebase.js";
-import { db } from "./firebase.js";
-import { deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { addBooking, db } from "./firebase.js";
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot,
+  query
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { sendTelegramNotification } from "./telegram.js";
 import { sendConfirmationToClient } from "./telegram-client.js";
 
-// Временные услуги
-const SERVICES = [
-  { id: "1", name: "Маникюр + гель-лак", duration: 120 },
-  { id: "2", name: "Комбинированный маникюр", duration: 90 },
-  { id: "3", name: "Педикюр", duration: 90 }
-];
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+let currentAdminDate = null;
+let adminUnsubscribe = null;
+let services = [];
+let servicesUnsubscribe = null;
 
-// Генерация времени
+// ПОДПИСКА НА УСЛУГИ — ГЛАВНОЕ ИСПРАВЛЕНИЕ!
+const initServices = () => {
+  if (servicesUnsubscribe) return;
+
+  const q = query(collection(db, "services"));
+  servicesUnsubscribe = onSnapshot(q, (snapshot) => {
+    const oldIds = services.map(s => s.id);
+    services = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Дефолтные услуги для админа
+    if (services.length === 0 && store.isAdmin) {
+      const defaults = [
+        { name: "Маникюр + гель-лак", duration: 120, price: 2500 },
+        { name: "Комбинированный маникюр", duration: 90, price: 1800 },
+        { name: "Педикюр", duration: 90, price: 2200 }
+      ];
+      defaults.forEach(async (s, i) => {
+        await setDoc(doc(db, "services", (i + 1).toString()), s);
+      });
+    }
+
+    // КРИТИЧЕСКИ ВАЖНО: обновляем ВСЕ открытые модалки клиента
+    forceUpdateClientSelect();
+    updateAdminServiceEditor();
+  }, (err) => {
+    console.error("Ошибка загрузки услуг:", err);
+    toast("Ошибка загрузки услуг", "error");
+  });
+};
+initServices();
+
+// ОБНОВЛЕНИЕ SELECT У КЛИЕНТА — ИСПРАВЛЕНО!
+const forceUpdateClientSelect = () => {
+  const select = document.getElementById("service");
+  if (!select) return;
+
+  const currentValue = select.value;
+
+  // Полностью перерисовываем options
+  select.innerHTML = `
+    <option value="">${services.length === 0 ? "Загрузка услуг..." : "Выберите услугу"}</option>
+    ${services.map(s => `
+      <option value="${s.id}" ${s.id === currentValue ? "selected" : ""}>
+        ${s.name} — ${s.price}₽ (${s.duration} мин)
+      </option>
+    `).join("")}
+  `;
+
+  // Если услуги только что загрузились — уведомим
+  if (services.length > 0 && select.options.length > 1 && select.options[1].value) {
+    select.style.color = "#333";
+  }
+};
+
+// ОБНОВЛЕНИЕ РЕДАКТОРА У АДМИНА
+const updateAdminServiceEditor = () => {
+  const container = document.getElementById("servicesList");
+  if (!container) return;
+
+  container.innerHTML = services.map(s => `
+    <div style="background:#fff;padding:16px;border-radius:16px;margin:12px 0;box-shadow:0 4px 15px rgba(0,0,0,0.1);position:relative">
+      <input type="text" value="${s.name}" data-id="${s.id}" data-field="name" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:12px;margin-bottom:8px;font-weight:600">
+      <div style="display:flex;gap:10px">
+        <input type="number" value="${s.duration}" data-id="${s.id}" data-field="duration" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:12px">
+        <input type="number" value="${s.price}" data-id="${s.id}" data-field="price" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:12px">
+      </div>
+      <button onclick="deleteService('${s.id}')" style="position:absolute;top:8px;right:8px;background:#ef476f;color:white;padding:6px 12px;border:none;border-radius:50px;font-size:0.9rem">Удалить</button>
+    </div>
+  `).join("");
+
+  container.querySelectorAll("input").forEach(input => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.id;
+      const field = input.dataset.field;
+      const value = field === "price" || field === "duration" ? Number(input.value) || 0 : input.value.trim();
+      if (field === "name" && !value) return toast("Название не может быть пустым", "error");
+      await setDoc(doc(db, "services", id), { [field]: value }, { merge: true });
+    });
+  });
+};
+
+// ВРЕМЯ
 const allTimeSlots = [];
 for (let h = 9; h <= 18; h++) {
-  allTimeSlots.push(`${h.toString().padStart(2, 0)}:00`, `${h.toString().padStart(2, 0)}:30`);
+  allTimeSlots.push(`${h.toString().padStart(2, "0")}:00`, `${h.toString().padStart(2, "0")}:30`);
 }
 allTimeSlots.pop();
 
 const timeToMinutes = t => t.split(":").map(Number).reduce((h, m) => h * 60 + m, 0);
 
-// Проверка свободности слота
 const isRangeFree = (dateStr, startTime, duration) => {
   const start = timeToMinutes(startTime);
   const end = start + duration;
@@ -36,7 +122,7 @@ const isRangeFree = (dateStr, startTime, duration) => {
       if (b.date !== dateStr) return false;
       if (b.time === "00:00" && b.blocked) return true;
       const bStart = timeToMinutes(b.time);
-      const bEnd = bStart + (b.duration || 30);
+      const bEnd = bStart + (b.duration || 60);
       return slotMin >= bStart && slotMin < bEnd;
     });
   });
@@ -44,260 +130,207 @@ const isRangeFree = (dateStr, startTime, duration) => {
 
 // ГЛАВНАЯ ФУНКЦИЯ
 export function showBookingModal(dateISO) {
-  if (!dateISO || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) {
-    return toast("Неверная дата", "error");
-  }
+  if (!dateISO || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return toast("Неверная дата", "error");
 
   const dateStr = dateISO;
 
   if (!store.isAdmin) {
     const limit = new Date();
     limit.setHours(limit.getHours() + (store.timeLimitHours || 2));
-    if (new Date(dateISO) < limit) {
-      return toast("Запись возможна не ранее чем за 2 часа", "error");
-    }
-
+    if (new Date(dateISO) < limit) return toast("Запись возможна не ранее чем за 2 часа", "error");
     const blocked = store.bookings.some(b => b.date === dateStr && b.time === "00:00" && b.blocked);
     if (blocked) return toast("День заблокирован мастером", "error");
   }
 
-  if (store.isAdmin) {
-    openAdminDayModal(dateStr);
-  } else {
-    openUserBookingModal(dateStr);
-  }
+  store.isAdmin ? openAdminModal(dateStr) : openClientModal(dateStr);
 }
 
-// === КЛИЕНТСКАЯ МОДАЛКА ===
-export const openUserBookingModal = (dateStr) => {
-  const availableTimes = allTimeSlots.filter(t => isRangeFree(dateStr, t, 30));
-
+// КЛИЕНТСКАЯ МОДАЛКА — УСЛУГИ ОБНОВЛЯЮТСЯ МГНОВЕННО!
+const openClientModal = (dateStr) => {
   showModal(`
-    <h3 style="color:#ff6b9d;margin-bottom:20px">Запись на ${dateStr}</h3>
-    <label>Ваше имя</label>
-    <input type="text" id="clientName" placeholder="ФИО" required />
-    <label>Телефон</label>
-    <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" required />
-    <label>Telegram ID (опционально)</label>
-    <input type="text" id="telegramId" placeholder="@username или ID" />
-    <label>Услуга</label>
-    <select id="service" required>
-      ${SERVICES.map(s => `<option value="${s.id}">${s.name} (${s.duration} мин)</option>`).join("")}
-    </select>
-    <label>Время</label>
-    <select id="time" required>
-      <option value="">Выберите время</option>
-      ${availableTimes.map(t => `<option value="${t}">${t}</option>`).join("")}
-    </select>
-    <div class="buttons" style="margin-top:25px;">
-      <button class="secondary" onclick="closeModal()">Отмена</button>
-      <button class="primary" onclick="bookAppointment('${dateStr}')">Записаться</button>
+    <div style="position:relative;padding:20px">
+      <div style="position:absolute;top:10px;right:14px;width:44px;height:44px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;cursor:pointer;z-index:10"
+           onclick="closeModal()">×</div>
+      <h3 style="color:var(--primary-color,#ff6b9d);margin:0 0 24px;text-align:center;font-size:1.7rem">Запись на ${dateStr}</h3>
+
+      <label>Ваше имя</label>
+      <input type="text" id="clientName" placeholder="ФИО" value="${localStorage.getItem('clientName') || ''}" required />
+      <label>Телефон</label>
+      <input type="tel" id="clientPhone" placeholder="+7 (999) 123-45-67" value="${localStorage.getItem('clientPhone') || ''}" required />
+      <label>Telegram ID (опционально)</label>
+      <input type="text" id="telegramId" placeholder="@username или ID" />
+
+      <label>Услуга</label>
+      <select id="service" required>
+        <option value="">${services.length === 0 ? "Загрузка услуг..." : "Выберите услугу"}</option>
+      </select>
+
+      <label>Время</label>
+      <select id="time" required>
+        <option value="">Выберите время</option>
+        ${allTimeSlots.map(t => `<option value="${t}">${t}</option>`).join("")}
+      </select>
+
+      <div style="margin-top:30px;display:flex;gap:12px;justify-content:center">
+        <button style="background:#888;color:white;padding:14px 28px;border:none;border-radius:50px" onclick="closeModal()">Отмена</button>
+        <button style="background:var(--primary-color,#ff6b9d);color:white;padding:14px 32px;border:none;border-radius:50px;box-shadow:0 8px 25px rgba(255,107,157,0.3)"
+                onclick="bookAppointment('${dateStr}')">Записаться</button>
+      </div>
     </div>
   `);
+
+  // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: сразу обновляем список услуг
+  forceUpdateClientSelect();
 };
 
-// === АДМИНСКАЯ МОДАЛКА С ЖИВЫМ ОБНОВЛЕНИЕМ ===
-let currentAdminModalDate = null;
-
-const renderAdminModalContent = () => {
-  if (!currentAdminModalDate) return;
-  const dateStr = currentAdminModalDate;
-
-  const blockedEntry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
-  const isBlocked = !!blockedEntry;
-
-  const regular = store.bookings.filter(b =>
-    b.date === dateStr &&
-    b.time !== "00:00" &&
-    b.blocked !== true
-  );
-
-  const modalContent = document.querySelector("#modal-root .modal > div") || document.querySelector("#modal-root .modal");
-  if (!modalContent) return;
-
-  modalContent.innerHTML = `
-    <h3 style="color:#ff6b9d;margin-bottom:20px">Управление: ${dateStr}</h3>
-    
-    <div style="margin-bottom:30px;padding:20px;background:#fff0f5;border-radius:18px">
-      <h4 style="color:#ff6b9d;margin-bottom:15px">Блокировка дня</h4>
-      ${isBlocked
-      ? `<button class="primary" onclick="unblockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(239,71,111,0.4);font-weight:600">
-           Разблокировать весь день
-         </button>`
-      : `<button class="primary" onclick="blockDay('${dateStr}')" style="padding:18px 32px;font-size:1.2rem;min-width:280px;border-radius:50px;box-shadow:0 10px 30px rgba(255,107,157,0.3);font-weight:600">
-           Заблокировать весь день
-         </button>`
-    }
-    </div>
-
-    <h4 style="margin:20px 0 10px;color:#ff6b9d">Записи (${regular.length})</h4>
-    ${regular.length === 0
-      ? `<p style="text-align:center;color:#aaa;font-style:italic">Нет записей</p>`
-      : regular.map(b => `
-          <div style="background:#fff0f5;padding:16px;border-radius:18px;margin:12px 0;box-shadow:0 4px 15px rgba(255,107,157,0.1);border-left:4px solid #ff6b9d">
-            <div style="font-weight:600;color:#ff6b9d">${b.time} — ${b.clientName} (${b.serviceName} ${b.duration} мин)</div>
-            <div style="margin:6px 0">Тел: ${b.clientPhone || "—"} | TG: ${b.telegramId || "—"}</div>
-            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-              <button onclick="editBooking('${b.id}')" style="background:#ff6b9d;color:white;padding:8px 16px;border:none;border-radius:50px;font-size:0.9rem">
-                Изменить
-              </button>
-              <button onclick="deleteBooking('${b.id}')" style="background:#ef476f;color:white;padding:8px 16px;border:none;border-radius:50px;font-size:0.9rem">
-                Отменить
-              </button>
-            </div>
-          </div>
-        `).join("")
-    }
-
-    <div class="buttons" style="margin-top:30px">
-      <button class="secondary" onclick="closeModal()">Закрыть</button>
-    </div>
-  `;
-};
-
-const openAdminDayModal = (dateStr) => {
-  currentAdminModalDate = dateStr;
-  showModal(`<div></div>`);
-  renderAdminModalContent();
-
-  const unsubscribe = subscribe(() => {
-    if (currentAdminModalDate) renderAdminModalContent();
-  });
-
-  const oldClose = closeModal;
-  window.closeModal = () => {
-    unsubscribe();
-    currentAdminModalDate = null;
-    oldClose();
-  };
-};
-
-// === РЕДАКТИРОВАНИЕ ===
-window.editBooking = (id) => {
-  const b = store.bookings.find(x => x.id === id);
-  if (!b) return toast("Запись не найдена", "error");
-
-  showModal(`
-    <h3 style="color:#ff6b9d;margin-bottom:20px">Редактировать запись</h3>
-    <label>Дата</label>
-    <input type="date" id="editDate" value="${b.date}" />
-    <label>Время</label>
-    <input type="time" id="editTime" value="${b.time}" step="1800" />
-    <label>Услуга</label>
-    <select id="editService">
-      ${SERVICES.map(s => `<option value="${s.id}" ${s.id === (b.serviceId || "1") ? "selected" : ""}>${s.name} (${s.duration} мин)</option>`).join("")}
-    </select>
-    <label>Имя клиента</label>
-    <input type="text" id="editClientName" value="${b.clientName || ""}" />
-    <label>Телефон</label>
-    <input type="tel" id="editClientPhone" value="${b.clientPhone || ""}" />
-    <label>Telegram ID</label>
-    <input type="text" id="editTelegramId" value="${b.telegramId || ""}" />
-    <div class="buttons" style="margin-top:25px;">
-      <button class="secondary" onclick="closeModal()">Отмена</button>
-      <button class="primary" onclick="saveEdit('${id}', '${b.date}')">Сохранить</button>
-    </div>
-  `);
-};
-
-window.saveEdit = async (id, oldDate) => {
-  const newDate = document.getElementById("editDate").value;
-  const newTime = document.getElementById("editTime").value;
-  const serviceId = document.getElementById("editService").value;
-  const service = SERVICES.find(s => s.id === serviceId);
-  const clientName = document.getElementById("editClientName").value.trim();
-  const clientPhone = document.getElementById("editClientPhone").value.trim();
-  const telegramId = document.getElementById("editTelegramId").value.trim();
-
-  if (!newDate || !newTime || !clientName) return toast("Заполните обязательные поля", "error");
-  if (newDate !== oldDate || newTime !== store.bookings.find(b => b.id === id).time) {
-    if (!isRangeFree(newDate, newTime, service.duration)) {
-      return toast("Это время уже занято", "error");
-    }
-  }
-
-  try {
-    await updateDoc(doc(db, "bookings", id), {
-      date: newDate,
-      time: newTime,
-      serviceId, serviceName: service.name, duration: service.duration,
-      clientName, clientPhone, telegramId: telegramId || null,
-      updatedAt: new Date().toISOString()
-    });
-
-    if (telegramId) {
-      await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, newDate, newTime);
-    }
-
-    toast("Запись обновлена", "success");
-    closeModal();
-  } catch (e) {
-    console.error(e);
-    toast("Ошибка сохранения", "error");
-  }
-};
-
-// === БЛОКИРОВКА / РАЗБЛОКИРОВКА / УДАЛЕНИЕ ===
-window.blockDay = async (dateStr) => {
-  if (!confirm("Заблокировать весь день?")) return;
-  await addBooking({ date: dateStr, time: "00:00", blocked: true, clientName: "Мастер" });
-  toast("День заблокирован", "info");
-  closeModal();
-};
-
-window.unblockDay = async (dateStr) => {
-  const entry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
-  if (!entry || !confirm("Разблокировать день?")) return;
-  await deleteDoc(doc(db, "bookings", entry.id));
-  toast("День разблокирован", "success");
-  closeModal();
-};
-
-window.deleteBooking = async (id) => {
-  if (!confirm("Удалить запись?")) return;
-  await deleteDoc(doc(db, "bookings", id));
-  toast("Запись удалена", "info");
-  closeModal();
-};
-
-// === ГЛАВНАЯ ФУНКЦИЯ ЗАПИСИ — С СОХРАНЕНИЕМ ДАННЫХ КЛИЕНТА ===
+// ЗАПИСЬ КЛИЕНТА
 window.bookAppointment = async (dateStr) => {
-  const clientName = document.getElementById("clientName").value.trim();
-  const clientPhone = document.getElementById("clientPhone").value.trim();
-  const telegramId = document.getElementById("telegramId").value.trim();
-  const serviceId = document.getElementById("service").value;
-  const time = document.getElementById("time").value;
+  const clientName = document.getElementById("clientName")?.value.trim();
+  const clientPhone = document.getElementById("clientPhone")?.value.trim();
+  const telegramId = document.getElementById("telegramId")?.value.trim() || null;
+  const serviceId = document.getElementById("service")?.value;
+  const time = document.getElementById("time")?.value;
 
   if (!clientName || !clientPhone || !serviceId || !time) return toast("Заполните все поля", "error");
 
-  const service = SERVICES.find(s => s.id === serviceId);
-  if (!isRangeFree(dateStr, time, service.duration)) return toast("Время занято", "error");
+  const service = services.find(s => s.id === serviceId);
+  if (!service) return toast("Выберите услугу", "error");
+
+  if (!isRangeFree(dateStr, time, service.duration)) return toast("Время уже занято", "error");
 
   try {
-    const booking = await addBooking({
+    await addBooking({
       date: dateStr,
       time,
       clientName,
       clientPhone,
-      telegramId: telegramId || null,
-      serviceId,
+      telegramId,
+      serviceId: service.id,
       serviceName: service.name,
-      duration: service.duration
+      duration: service.duration,
+      price: service.price
     });
 
-    await sendTelegramNotification(booking);
-    if (telegramId) {
-      await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, dateStr, time);
-    }
+    await sendTelegramNotification({ date: dateStr, time, clientName, serviceName: service.name, clientPhone, telegramId });
+    if (telegramId) await sendConfirmationToClient(telegramId, clientName, service.name, service.duration, dateStr, time);
 
-    // СОХРАНЯЕМ ДАННЫЕ КЛИЕНТА — чтобы потом он видел только свою запись
     localStorage.setItem('clientName', clientName);
     localStorage.setItem('clientPhone', clientPhone);
 
-    toast("Вы записаны!", "success");
+    toast("Вы успешно записаны!", "success");
     closeModal();
   } catch (e) {
     console.error(e);
     toast("Ошибка записи", "error");
   }
 };
+// АДМИНСКАЯ МОДАЛКА
+const openAdminModal = (dateStr) => {
+  currentAdminDate = dateStr;
+  if (adminUnsubscribe) adminUnsubscribe();
+
+  showModal(`<div id="adminModalInner" style="position:relative"></div>`);
+  renderAdminContent();
+  adminUnsubscribe = subscribe(renderAdminContent);
+};
+
+const renderAdminContent = () => {
+  if (!currentAdminDate) return;
+  const date = currentAdminDate;
+  const blocked = store.bookings.some(b => b.date === date && b.time === "00:00" && b.blocked);
+  const bookings = store.bookings.filter(b => b.date === date && b.time !== "00:00" && !b.blocked);
+
+  const container = document.getElementById("adminModalInner");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="position:absolute;top:10px;right:14px;width:44px;height:44px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;cursor:pointer;z-index:10"
+         onclick="closeAdminModal()">×</div>
+
+    <h3 style="color:var(--primary-color,#ff6b9d);text-align:center;margin:0 0 24px;font-size:1.8rem">Управление: ${date}</h3>
+
+    <div style="margin:20px 0;padding:20px;background:#fff0f5;border-radius:20px;text-align:center">
+      ${blocked
+        ? `<button onclick="unblockDay('${date}')" style="background:#4caf50;color:white;padding:18px 40px;border:none;border-radius:50px;font-size:1.2rem">Разблокировать день</button>`
+        : `<button onclick="blockDay('${date}')" style="background:var(--primary-color,#ff6b9d);color:white;padding:18px 40px;border:none;border-radius:50px;font-size:1.2rem">Заблокировать день</button>`
+      }
+    </div>
+
+    <div style="margin:30px 0;padding:20px;background:#f8f4fc;border-radius:20px;text-align:center">
+      <button onclick="openServiceEditor()" style="background:var(--primary-color,#ff6b9d);color:white;padding:14px 30px;border:none;border-radius:50px">Редактировать услуги (${services.length})</button>
+    </div>
+
+    <h4 style="color:var(--primary-color,#ff6b9d);margin:24px 0 12px">Записи (${bookings.length})</h4>
+    ${bookings.length === 0 ? `<p style="text-align:center;color:#aaa;padding:20px">Нет записей</p>` : bookings.map(b => {
+      const s = services.find(x => x.id === b.serviceId) || {};
+      return `<div style="background:#fff0f5;padding:18px;border-radius:20px;margin:12px 0;border-left:5px solid var(--primary-color,#ff6b9d)">
+        <div style="font-weight:700;color:var(--primary-color,#ff6b9d)">${b.time} — ${b.clientName}</div>
+        <div>${s.name || b.serviceName || "—"} — ${s.price || b.price || "?"}₽ (${s.duration || b.duration || "?"} мин)</div>
+        <div style="margin-top:8px;color:#555;font-size:0.9rem">Тел: ${b.clientPhone || "—"} | TG: ${b.telegramId || "—"}</div>
+        <div style="margin-top:12px;display:flex;gap:10px">
+          <button onclick="deleteBooking('${b.id}')" style="background:#ef476f;color:white;padding:10px 20px;border:none;border-radius:50px">Удалить</button>
+        </div>
+      </div>`;
+    }).join("")}
+
+    <div style="margin-top:30px;text-align:center">
+      <button style="background:#888;color:white;padding:14px 40px;border:none;border-radius:50px" onclick="closeAdminModal()">Закрыть</button>
+    </div>
+  `;
+};
+
+// РЕДАКТОР УСЛУГ
+window.openServiceEditor = () => {
+  showModal(`
+    <div style="position:relative;padding:20px">
+      <div style="position:absolute;top:10px;right:14px;width:44px;height:44px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;cursor:pointer"
+           onclick="closeModal()">×</div>
+      <h3 style="color:var(--primary-color,#ff6b9d);text-align:center;margin-bottom:24px">Редактор услуг</h3>
+      <div id="servicesList"></div>
+      <button onclick="addNewService()" style="background:var(--primary-color,#ff6b9d);color:white;padding:14px 30px;border:none;border-radius:50px;margin:20px auto;display:block">+ Добавить услугу</button>
+      <div style="text-align:center">
+        <button style="background:#888;color:white;padding:14px 40px;border:none;border-radius:50px" onclick="closeModal()">Закрыть</button>
+      </div>
+    </div>
+  `);
+  updateAdminServiceEditor();
+};
+
+window.addNewService = async () => {
+  const newId = Date.now().toString();
+  await setDoc(doc(db, "services", newId), { name: "Новая услуга", duration: 60, price: 2000 });
+};
+
+window.deleteService = async (id) => {
+  if (confirm("Удалить услугу?")) await deleteDoc(doc(db, "services", id));
+};
+
+window.closeAdminModal = () => {
+  if (adminUnsubscribe) { adminUnsubscribe(); adminUnsubscribe = null; }
+  currentAdminDate = null;
+  closeModal();
+};
+
+window.blockDay = async (dateStr) => {
+  if (confirm("Заблокировать день?")) {
+    await addBooking({ date: dateStr, time: "00:00", blocked: true, clientName: "Мастер" });
+    toast("День заблокирован", "info");
+  }
+};
+
+window.unblockDay = async (dateStr) => {
+  const entry = store.bookings.find(b => b.date === dateStr && b.time === "00:00" && b.blocked);
+  if (entry && confirm("Разблокировать день?")) {
+    await deleteDoc(doc(db, "bookings", entry.id));
+    toast("День разблокирован", "success");
+  }
+};
+
+window.deleteBooking = async (id) => {
+  if (confirm("Удалить запись?")) {
+    await deleteDoc(doc(db, "bookings", id));
+    toast("Запись удалена", "info");
+  }
+};
+
+export {};
