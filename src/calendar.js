@@ -1,57 +1,70 @@
-// src/calendar.js — С КНОПКОЙ "НАВЕРХ" В МОБИЛЬНОЙ ВЕРСИИ (23.11.2025)
+// src/calendar.js — ПОЛНАЯ ФИНАЛЬНАЯ ВЕРСИЯ С КНОПКОЙ "НАВЕРХ" (23.11.2025)
 
 import { store, subscribe } from "./store.js";
 
 const daysOfWeek = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const getCurrentDate = () => store.currentDate || new Date();
 
-// === КНОПКА "НАВЕРХ" ===
-const createScrollToTopButton = () => {
+// === КНОПКА "НАВЕРХ" — появляется после ~1.5 экрана (350px) ===
+const initScrollToTopButton = () => {
+  if (document.getElementById("scrollToTopBtn")) return;
+
   const btn = document.createElement("div");
+  btn.id = "scrollToTopBtn";
   btn.innerHTML = "↑";
+  btn.title = "Наверх";
   btn.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    background: #ff6b9d;
-    color: white;
-    border-radius: 50%;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    font-weight: bold;
-    box-shadow: 0 4px 20px rgba(255, 107, 157, 0.5);
-    z-index: 1000;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    user-select: none;
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    width:56px;
+    height:56px;
+    background:#ff6b9d;
+    color:white;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+    font-weight:bold;
+    box-shadow:0 6px 25px rgba(255,107,157,0.6);
+    z-index:9999;
+    cursor:pointer;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity 0.35s ease, transform 0.35s ease;
+    transform:translateY(10px);
+    user-select:none;
   `;
   btn.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
   document.body.appendChild(btn);
 
-  window.addEventListener("scroll", () => {
-    if (window.scrollY > 400) {
-      btn.style.display = "flex";
-      btn.style.transform = "scale(1)";
+  const threshold = 350; // ← полтора экрана
+
+  const toggleButton = () => {
+    if (window.scrollY > threshold) {
+      btn.style.opacity = "1";
+      btn.style.visibility = "visible";
+      btn.style.transform = "translateY(0)";
     } else {
-      btn.style.transform = "scale(0.8)";
-      setTimeout(() => {
-        if (window.scrollY <= 400) btn.style.display = "none";
-      }, 300);
+      btn.style.opacity = "0";
+      btn.style.visibility = "hidden";
+      btn.style.transform = "translateY(10px)";
     }
-  });
+  };
+
+  window.addEventListener("scroll", toggleButton);
+  toggleButton();
 };
 
-// === ПРОВЕРКА СВОЕЙ ЗАПИСИ ===
+// === ПРОВЕРКА: своя ли это запись ===
 const isCurrentUserBooking = (booking) => {
   if (store.isAdmin) return true;
   try {
     const savedPhone = localStorage.getItem('clientPhone');
     const savedName = localStorage.getItem('clientName');
     if (!savedPhone && !savedName) return false;
+
     if (savedPhone && booking.clientPhone === savedPhone) return true;
     if (savedName && booking.clientName) {
       const n1 = savedName.trim().toLowerCase();
@@ -87,78 +100,106 @@ export function renderCalendar() {
 
   calendarEl.innerHTML = "";
 
-  // Создаём кнопку "Наверх" только в мобильной версии
-  if (isMobile && !document.querySelector("#scrollToTopBtn")) {
-    createScrollToTopButton();
-  }
+  // Создаём кнопку только на мобильных и только один раз
+  if (isMobile) initScrollToTopButton();
 
   if (!isMobile) {
-    // Десктоп — без изменений
+    // === ДЕСКТОПНАЯ ВЕРСИЯ ===
     daysOfWeek.forEach(dayName => {
       const header = document.createElement("div");
       header.textContent = dayName;
       header.style.cssText = "font-weight:600;text-align:center;padding:16px 8px;color:#ff6b9d;font-size:1rem;";
       calendarEl.appendChild(header);
     });
-    for (let i = 0; i < startDay; i++) calendarEl.appendChild(document.createElement("div"));
+
+    for (let i = 0; i < startDay; i++) {
+      calendarEl.appendChild(document.createElement("div"));
+    }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateISO = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const dayBookings = store.bookings.filter(b => b.date === dateISO && b.time !== "00:00" && b.blocked !== true);
-
-      const bookingsHTML = dayBookings.length === 0
-        ? '<div style="color:#ff6b9d;font-weight:600">Свободно</div>'
-        : dayBookings.map(b => isCurrentUserBooking(b)
-            ? `<div style="margin:6px 0;padding:10px;background:#e8f5e9;border-radius:12px;border-left:4px solid #4caf50;">
-                 <strong>${b.time}</strong> — ${b.clientName || "Вы"} ${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : '(ваша запись)'}
-               </div>`
-            : `<div style="margin:6px 0;padding:10px;background:#ffe0e0;border-radius:12px;color:#999;border-left:4px solid #ff6b9d;">
-                 <strong>${b.time}</strong> — Занято
-               </div>`
-        ).join("");
+      const isPast = dateISO < todayISO;
 
       const dayEl = document.createElement("div");
       dayEl.className = "day";
+      if (isPast) dayEl.classList.add("past");
+
+      const dayBookings = store.bookings.filter(b =>
+        b.date === dateISO && b.time !== "00:00" && b.blocked !== true
+      );
+
+      const bookingsHTML = dayBookings.length === 0
+        ? '<div style="color:#ff6b9d;font-weight:600">Свободно</div>'
+        : dayBookings.map(b => {
+            if (isCurrentUserBooking(b)) {
+              return `<div style="margin:6px 0;padding:10px;background:#e8f5e9;border-radius:12px;font-size:0.9rem;border-left:4px solid #4caf50;">
+                        <strong>${b.time}</strong> — ${b.clientName || "Вы"} 
+                        ${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : '(ваша запись)'}
+                      </div>`;
+            } else {
+              return `<div style="margin:6px 0;padding:10px;background:#ffe0e0;border-radius:12px;color:#999;font-size:0.9rem;border-left:4px solid #ff6b9d;">
+                        <strong>${b.time}</strong> — Занято
+                      </div>`;
+            }
+          }).join("");
+
       dayEl.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${day}</div>${bookingsHTML}`;
+
       dayEl.onclick = () => {
-        if (dateISO < todayISO && !store.isAdmin) return;
-        import("./components.js").then(m => m.showBookingModal(dateISO));
+        if (isPast && !store.isAdmin) return;
+        import("./components.js").then(mod => mod.showBookingModal(dateISO));
       };
+
       calendarEl.appendChild(dayEl);
     }
   } else {
-    // МОБИЛЬНАЯ ВЕРСИЯ
+    // === МОБИЛЬНАЯ ВЕРСИЯ ===
     for (let day = 1; day <= daysInMonth; day++) {
       const dateISO = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      if (dateISO < todayISO && !store.isAdmin) continue;
+      const isPast = dateISO < todayISO;
+
+      if (isPast && !store.isAdmin) continue;
 
       const dayOfWeekIndex = (startDay + day - 1) % 7;
       const dayName = daysOfWeek[dayOfWeekIndex];
 
-      const dayBookings = store.bookings.filter(b => b.date === dateISO && b.time !== "00:00" && b.blocked !== true);
-
-      const bookingsHTML = dayBookings.length === 0
-        ? '<div style="color:#ff6b9d;font-weight:600;font-size:1.1rem">Полностью свободно</div>'
-        : dayBookings.map(b => isCurrentUserBooking(b)
-            ? `<div style="margin:10px 0;padding:14px;background:#e8f5e9;border-radius:16px;border-left:5px solid #4caf50;">
-                 <strong>${b.time}</strong> — ${b.clientName || "Вы"} (ваша запись)${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : ''}
-               </div>`
-            : `<div style="margin:10px 0;padding:14px;background:#ffe0e0;border-radius:16px;color:#999;border-left:5px solid #ff6b9d;">
-                 <strong>${b.time}</strong> — Занято
-               </div>`
-        ).join("");
-
       const mobileDay = document.createElement("div");
       mobileDay.className = "mobile-day";
       if (dateISO === todayISO) mobileDay.classList.add("today");
+
+      const dayBookings = store.bookings.filter(b =>
+        b.date === dateISO && b.time !== "00:00" && b.blocked !== true
+      );
+
+      const bookingsHTML = dayBookings.length === 0
+        ? '<div style="color:#ff6b9d;font-weight:600;font-size:1.1rem">Полностью свободно</div>'
+        : dayBookings.map(b => {
+            if (isCurrentUserBooking(b)) {
+              return `<div style="margin:10px 0;padding:14px;background:#e8f5e9;border-radius:16px;font-size:0.95rem;border-left:5px solid #4caf50;">
+                        <strong>${b.time}</strong> — ${b.clientName || "Вы"} (ваша запись)
+                        ${store.isAdmin ? `<br>Тел: ${b.clientPhone}` : ''}
+                      </div>`;
+            } else {
+              return `<div style="margin:10px 0;padding:14px;background:#ffe0e0;border-radius:16px;font-size:0.95rem;color:#999;border-left:5px solid #ff6b9d;">
+                        <strong>${b.time}</strong> — Занято
+                      </div>`;
+            }
+          }).join("");
+
       mobileDay.innerHTML = `
         <div class="mobile-day-header">
           ${day} ${currentDate.toLocaleDateString("ru-RU", { month: "long" }).slice(0, 3)} • ${dayName}
           ${dateISO === todayISO ? " • Сегодня" : ""}
         </div>
-        <div style="padding:18px">${bookingsHTML}</div>
+        <div style="padding:18px">
+          ${bookingsHTML}
+        </div>
       `;
-      mobileDay.onclick = () => import("./components.js").then(m => m.showBookingModal(dateISO));
+
+      mobileDay.onclick = () => {
+        import("./components.js").then(mod => mod.showBookingModal(dateISO));
+      };
+
       calendarEl.appendChild(mobileDay);
     }
   }
