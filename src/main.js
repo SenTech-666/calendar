@@ -116,3 +116,46 @@ document.getElementById('installButton').addEventListener('click', async () => {
     deferredPrompt = null;
   }
 });
+
+// === PUSH УВЕДОМЛЕНИЯ ===
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  console.log('Push и Service Worker поддерживаются');
+
+  // Запрос разрешения на уведомления
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      console.log('Разрешение на уведомления получено');
+
+      // Регистрируем messaging (из firebase-messaging-compat.js)
+      const messaging = firebase.messaging();
+
+      // Получаем токен устройства
+      messaging.getToken({
+        vapidKey: 'BKag8f...твой_VAPID_ключ_из_Firebase...' // ← смотри шаг 4
+      }).then((currentToken) => {
+        if (currentToken) {
+          console.log('Токен устройства:', currentToken);
+          // Сохраняем токен в localStorage (чтобы потом отправлять тебе)
+          localStorage.setItem('pushToken', currentToken);
+          // Можно сразу отправить токен на твой сервер/Telegram
+          sendTokenToServer(currentToken);
+        }
+      }).catch((err) => {
+        console.log('Ошибка получения токена:', err);
+      });
+    }
+  });
+}
+
+// Отправка токена тебе в Telegram (пример)
+function sendTokenToServer(token) {
+  const botToken = '7720338239:AAH6...';     // твой бот
+  const chatId = '8149...';                 // твой ID
+  const text = `Новый пуш-токен:\n\`\`\`\n${token}\n\`\`\``;
+
+  fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'Markdown' })
+  });
+}
