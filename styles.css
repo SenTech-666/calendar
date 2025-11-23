@@ -1,5 +1,5 @@
 /* =============================================================================
-   РАБОЧИЙ styles.css — ГЛАВНАЯ СТРАНИЦА НЕ ТРОНУТА, ФОРМЫ В ТВОЁМ СТИЛЕ
+   РАБОЧИЙ styles.css — ФИНАЛЬНАЯ ВЕРСИЯ (23.11.2025)
    ============================================================================= */
 
 :root {
@@ -28,9 +28,9 @@ body {
   min-height: 100vh;
 }
 
-/* ===== ГЛАВНАЯ СТРАНИЦА — ТВОЯ ВЕРСИЯ, НЕ МЕНЯЛ НИ СТРОЧКИ ===== */
+/* ===== ГЛАВНАЯ СТРАНИЦА ===== */
 .hero {
-  background: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)), 
+  background: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)),
               url('./assets/pexels-brigitte-tohm-36757-239576.jpg') center/cover no-repeat;
   height: 100vh;
   display: flex;
@@ -113,160 +113,72 @@ body {
   transform: translateY(-4px);
 }
 
-/* ===== ТВОИ БЛОКИ ПОД HERO — ОСТАВИЛ КАК БЫЛО ===== */
-.features, .price-list, .gallery, footer {
-  /* Твои стили из текущего файла — НЕ ТРОГАЛ */
+/* ===== БЛОКИ ГЛАВНОЙ ===== */
+.features { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); 
+  gap: 30px; 
+  margin: 80px 0; 
+  text-align: center; 
 }
-
-/* ===== КАЛЕНДАРЬ — СЕТКА РАБОТАЕТ ===== */
-#calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 16px;
-  max-width: 1400px;
-  margin: 30px auto;
-  padding: 10px;
+.features > div { 
+  background: white; 
+  padding: 35px 20px; 
+  border-radius: 24px; 
+  box-shadow: var(--shadow); 
+  font-size: 1.25rem; 
+  transition: 0.3s; 
 }
-
-@media (max-width: 768px) {
-  #calendar { display: block !important; }
-}
-
-.day, .mobile-day {
-  background: white;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.day:hover, .mobile-day:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(255,107,157,0.25);
-}
-
-.mobile-day-header {
-  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
-  color: white;
-  padding: 18px;
-  border-radius: var(--radius) var(--radius) 0 0;
-  font-size: 1.3rem;
-  text-align: center;
-}
-
-/* ===== ФОРМЫ И МОДАЛКИ — КНОПКИ В ТВОЁМ РОЗОВОМ СТИЛЕ ===== */
-.modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: flex; justify-content: center;
-  align-items: flex-start; padding-top: 40px;
-  overflow-y: auto;
-  backdrop-filter: blur(12px);
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  padding: 40px 30px;
-  border-radius: 28px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow: var(--shadow);
-}
-
-.modal h3 {
-  font-family: 'Playfair Display', serif;
-  font-size: 2rem;
-  color: var(--pink-dark);
-  text-align: center;
-  margin-bottom: 25px;
-}
-
-.modal input, .modal select, .modal textarea {
-  width: 100%;
-  padding: 16px;
-  margin: 12px 0;
-  border: 2px solid var(--pink-light);
-  border-radius: 16px;
-  font-size: 1.1rem;
-}
-
-.modal input:focus, .modal select:focus {
-  border-color: var(--pink);
-  outline: none;
-  box-shadow: 0 0 0 4px rgba(255,107,157,0.15);
-}
-
-.modal .buttons {
-  margin-top: 35px;
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.modal .buttons button {
-  padding: 16px 40px;
-  border-radius: 50px;
-  font-size: 1.1rem;
-  min-width: 160px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.4s ease;
-  box-shadow: var(--shadow);
-}
-
-.modal .buttons .primary {
-  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
-  color: white;
-  border: none;
-}
-
-.modal .buttons .primary:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 15px 35px rgba(255,107,157,0.4);
-}
-
-.modal .buttons .secondary {
-  background: white;
-  color: var(--text);
-  border: 2px solid var(--pink-light);
-}
-
-.modal .buttons .secondary:hover {
-  background: var(--pink-light);
-}
-
-/* ТОСТЫ */
-.toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 16px 36px;
-  border-radius: 50px;
-  color: white;
-  font-weight: 600;
-  z-index: 10000;
-  background: var(--pink-dark);
-}
-.container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 30px; margin: 80px 0; text-align: center; }
-.features > div { background: white; padding: 35px 20px; border-radius: 24px; box-shadow: var(--shadow); font-size: 1.25rem; transition: 0.3s; }
 .features > div:hover { transform: translateY(-10px); }
-.price-list { background: white; padding: 50px 40px; border-radius: 28px; box-shadow: var(--shadow); margin: 60px 0; }
-.price-list div { display: flex; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid #ffe4e9; font-size: 1.3rem; }
-.price-list span { color: var(--pink-dark); font-weight: 600; }
-.gallery .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 20px; margin: 60px 0; }
-.photo { height: 380px; background-size: cover; background-position: center; border-radius: 20px; box-shadow: var(--shadow); transition: 0.4s; }
+
+.price-list { 
+  background: white; 
+  padding: 50px 40px; 
+  border-radius: 28px; 
+  box-shadow: var(--shadow); 
+  margin: 60px 0; 
+}
+.price-list div { 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 20px 0; 
+  border-bottom: 1px solid #ffe4e9; 
+  font-size: 1.3rem; 
+}
+.price-list span { 
+  color: var(--pink-dark); 
+  font-weight: 600; 
+}
+
+.gallery .grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); 
+  gap: 20px; 
+  margin: 60px 0; 
+}
+.photo { 
+  height: 380px; 
+  background-size: cover; 
+  background-position: center; 
+  border-radius: 20px; 
+  box-shadow: var(--shadow); 
+  transition: 0.4s; 
+}
 .photo:hover { transform: scale(1.04); }
-footer { background: linear-gradient(135deg, #ffeef4, #ffd6e0); padding: 60px 20px; text-align: center; margin-top: 100px; color: #666; }
-/* Твои остальные стили — header, month-nav, всё как было */
- .month-nav {
+
+footer { 
+  background: linear-gradient(135deg, #ffeef4, #ffd6e0); 
+  padding: 60px 20px; 
+  text-align: center; 
+  margin-top: 100px; 
+  color: #666; 
+}
+
+/* ===== КАЛЕНДАРЬ ===== */
+.month-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;     /* ← Кнопки по краям! */
+  justify-content: space-between;
   padding: 16px 20px;
   background: #fff;
   border-radius: 20px;
@@ -297,74 +209,198 @@ footer { background: linear-gradient(135deg, #ffeef4, #ffd6e0); padding: 60px 20
   transform: translateY(-3px) scale(1.05);
   box-shadow: 0 12px 30px rgba(255, 107, 157, 0.4);
 }
-.month-nav h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #ff6b9d;
-  font-weight: 600;
-  font-family: 'Playfair Display', serif;
-  text-shadow: 0 2px 8px rgba(255, 107, 157, 0.1);
-}
 
 #calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 15px;
   margin: 30px auto;
-  /* Добавьте, если нужно выровнять сетку */
-  grid-auto-rows: minmax(180px, auto); /* Минимальная высота строк */
+  grid-auto-rows: minmax(180px, auto);
 }
 
-.day {
-  background: #fff;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.1);
+@media (max-width: 768px) {
+  #calendar { display: block !important; }
+}
+
+.day, .mobile-day {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  height: 200px; /* Фиксированная высота — подберите под ваш дизайн, например 250px */
-  overflow-y: auto; /* Прокрутка, если контента много */
-  transition: transform 0.3s;
+  overflow: hidden;
 }
 
-.day:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(255, 107, 157, 0.2);
-}
-.mobile-day {
-  background: #fff;
-  border-radius: 20px;
-  margin: 15px 0;
-  box-shadow: 0 8px 25px rgba(255, 107, 157, 0.15);
-  height: auto; /* Или фиксированная, если нужно: 300px */
-  overflow-y: auto;
-  transition: transform 0.3s;
+.day:hover, .mobile-day:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(255,107,157,0.25);
 }
 
-.mobile-day:hover {
-  transform: translateY(-5px);
+.mobile-day-header {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white;
+  padding: 18px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 1.3rem;
+  text-align: center;
 }
 
-.day.past {
-  background: #f8f8f8; /* Сероватый фон */
-  color: #999; /* Сероватый текст */
-  opacity: 0.8; /* Легкая прозрачность для "серости" */
-  pointer-events: none; /* Опционально: отключить взаимодействие с прошедшими днями */
+/* Прошлые дни */
+.day.past, .mobile-day.past {
+  background: #f8f8f8;
+  color: #999;
+  opacity: 0.8;
+  pointer-events: none;
 }
-
-.day.past:hover {
-  transform: none; /* Отключить hover-эффект */
+.day.past:hover, .mobile-day.past:hover {
+  transform: none;
   box-shadow: none;
 }
 
-.mobile-day.past {
-  background: #f8f8f8; /* Сероватый фон */
-  color: #999; /* Сероватый текст */
-  opacity: 0.8; /* Легкая прозрачность для "серости" */
-  pointer-events: none; /* Опционально: отключить взаимодействие */
+/* ===== МОДАЛКИ ===== */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex; justify-content: center;
+  align-items: flex-start; padding-top: 40px;
+  overflow-y: auto;
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+}
+.modal {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: var(--shadow);
+}
+.modal h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  color: var(--pink-dark);
+  text-align: center;
+  margin-bottom: 25px;
+}
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  padding: 16px;
+  margin: 12px 0;
+  border: 2px solid var(--pink-light);
+  border-radius: 16px;
+  font-size: 1.1rem;
+}
+.modal input:focus, .modal select:focus {
+  border-color: var(--pink);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255,107,157,0.15);
+}
+.modal .buttons {
+  margin-top: 35px;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.modal .buttons button {
+  padding: 16px 40px;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  min-width: 160px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  box-shadow: var(--shadow);
+}
+.modal .buttons .primary {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white;
+  border: none;
+}
+.modal .buttons .primary:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(255,107,157,0.4);
+}
+.modal .buttons .secondary {
+  background: white;
+  color: var(--text);
+  border: 2px solid var(--pink-light);
+}
+.modal .buttons .secondary:hover {
+  background: var(--pink-light);
 }
 
-.mobile-day.past:hover {
-  transform: none; /* Отключить hover-эффект */
+/* Тосты */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 36px;
+  border-radius: 50px;
+  color: white;
+  font-weight: 600;
+  z-index: 10000;
+  background: var(--pink-dark);
+}
+
+/* =============================================================================
+   ФИНАЛЬНЫЕ МОБИЛЬНЫЕ ИСПРАВЛЕНИЯ (23.11.2025)
+   ============================================================================= */
+
+/* =============================================================================
+   МОБИЛЬНЫЕ ПРАВКИ — НАЗВАНИЕ МЕСЯЦА В ОДНУ СТРОКУ + КНОПКИ КОМПАКТНЕЕ
+   ============================================================================= */
+@media (max-width: 768px) {
+  /* 1. Кнопка "← На главную" — под заголовком */
+  .header {
+    padding: 30px 20px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header button {
+    position: static !important;
+    margin-top: 18px !important;
+    width: fit-content;
+    padding: 12px 28px;
+    font-size: 1rem;
+  }
+
+  /* 2. Цены — цена под названием услуги */
+  .price-list div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 22px 0;
+    font-size: 1.22rem;
+    border-bottom: 1px solid #ffe4e9;
+  }
+  .price-list div > *:not(span) { font-weight: 500; }
+  .price-list div span { color: var(--pink-dark); font-weight: 700; font-size: 1.4rem; }
+  .price-list div:last-child { border-bottom: none; }
+
+  /* 3. Название месяца — ВСЕГДА в одну строку */
+  #currentMonth {
+    font-size: 1.75rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    padding: 0 8px;
+  }
+
+  /* Стрелки навигации — чуть компактнее */
+  .month-nav button {
+    padding: 10px 18px !important;
+    font-size: 1.2rem;
+  }
+
+  /* Делаем .app плавным при свайпе */
+  .app {
+    touch-action: pan-y;
+    user-select: none;
+  }
 }

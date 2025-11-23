@@ -1,4 +1,5 @@
 // src/toast.js
+
 export const toast = (message, type = "info") => {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;

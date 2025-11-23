@@ -1,3 +1,5 @@
+// src/store.js — ЗАПРЕТ НА ПРОШЛОЕ ДЛЯ КЛИЕНТОВ + ТОСТ
+
 const state = {
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
@@ -17,24 +19,37 @@ export const store = new Proxy(state, {
   }
 });
 
-export const subscribe = (fn) => { subscribers.push(fn); fn(); };
-
-// src/store.js — ИСПРАВЛЕННЫЕ prevMonth и nextMonth (это всё, что нужно!)
+export const subscribe = fn => { subscribers.push(fn); fn(); };
 
 export function prevMonth() {
   const newDate = new Date(store.year, store.month - 1);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const firstDayOfNewMonth = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+
+  // ЗАПРЕТ ДЛЯ КЛИЕНТОВ: нельзя в прошедший месяц
+  if (!store.isAdmin && firstDayOfNewMonth < today) {
+    if (typeof toast === 'function') {
+      toast("Запись на прошедшие даты невозможна", "error");
+    }
+    return;
+  }
+
   store.year = newDate.getFullYear();
   store.month = newDate.getMonth();
-  store.currentDate = newDate;        // ← ЭТО САМОЕ ВАЖНОЕ!
-  notifySubscribers();                // ← принудительно вызываем обновление
+  notify();
 }
 
 export function nextMonth() {
   const newDate = new Date(store.year, store.month + 1);
   store.year = newDate.getFullYear();
   store.month = newDate.getMonth();
-  store.currentDate = newDate;        // ← ЭТО САМОЕ ВАЖНОЕ!
-  notifySubscribers();                // ← принудительно вызываем обновление
+  notify();
+}
+
+function notify() {
+  subscribers.forEach(fn => fn());
 }
 
 export const updateBookingInStore = (id, updates) => {

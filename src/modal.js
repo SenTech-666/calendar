@@ -1,23 +1,22 @@
-// src/modal.js — 100% рабочая версия
-
+// src/modal.js
 export const showModal = (content) => {
   const root = document.getElementById("modal-root");
   root.innerHTML = `
-    <div class="modal-backdrop">
+    <div class="modal-backdrop" onclick="closeModal()">
       <div class="modal" onclick="event.stopPropagation()">
         ${content}
       </div>
     </div>
   `;
-
-  // Закрытие по клику вне формы
-  root.querySelector(".modal-backdrop").addEventListener("click", closeModal);
 };
 
 export const closeModal = () => {
-  const root = document.getElementById("modal-root");
-  root.innerHTML = "";
+  document.getElementById("modal-root").innerHTML = "";
+  if (window.currentUnsubscribe) {
+    window.currentUnsubscribe();
+    window.currentUnsubscribe = null;
+  }
 };
 
-// Делаем closeModal доступным глобально для кнопки "Отмена"
+// Один раз глобально
 window.closeModal = closeModal;

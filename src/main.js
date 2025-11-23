@@ -11,6 +11,7 @@ import { updateBookingInStore } from "./store.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 
+window.toast = toast; // Делаем глобальным для store
 const firebaseConfig = {
   apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
   authDomain: "calendar-666-5744f.firebaseapp.com",
