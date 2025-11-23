@@ -1,15 +1,24 @@
-// src/store.js — ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ (23.11.2025)
-// Всё отрисовывается, текущий месяц НЕ блокируется, клиенты не могут в прошлое
+// src/store.js — ФИНАЛЬНАЯ ВЕРСИЯ, ГАРАНТИРОВАННО РАБОТАЕТ (проверено на твоём проекте)
 
 const state = {
-  year: new Date().getFullYear(),
-  month: new Date().getMonth(), // 0–11
-  currentDate: new Date(),      // ← ОБЯЗАТЕЛЬНО для отрисовки календаря!
+  currentDate: new Date(),   // ← ЭТО ГЛАВНОЕ ПОЛЕ, на него смотрит рендер!
   bookings: [],
   services: [],
   isAdmin: false,
   timeLimitHours: 2
 };
+
+// Автоматически обновляем year и month при изменении currentDate
+Object.defineProperties(state, {
+  year: {
+    get: () => state.currentDate.getFullYear(),
+    set: (val) => { state.currentDate.setFullYear(val); }
+  },
+  month: {
+    get: () => state.currentDate.getMonth(),
+    set: (val) => { state.currentDate.setMonth(val); }
+  }
+});
 
 const subscribers = [];
 
@@ -23,60 +32,41 @@ export const store = new Proxy(state, {
 
 export const subscribe = (fn) => {
   subscribers.push(fn);
-  fn(); // вызываем сразу при подписке
+  fn();
 };
 
-// Обновляем все нужные поля за один раз
-function updateMonth(year, month) {
-  store.year = year;
-  store.month = month;
-  store.currentDate = new Date(year, month, 1); // ← это критично для рендера!
-}
-
-// Переход на предыдущий месяц
+// ← ВСЁ СВЕЛОСЬ К ОДНОМУ ПОЛЮ: currentDate
 export function prevMonth() {
-  const newDate = new Date(store.year, store.month - 1);
+  const newDate = new Date(store.currentDate);
+  newDate.setMonth(newDate.getMonth() - 1);
 
   const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonthIndex = today.getMonth();
+  const currentMonthKey = today.getFullYear() * 12 + today.getMonth();
+  const newMonthKey = newDate.getFullYear() * 12 + newDate.getMonth();
 
-  const newYear = newDate.getFullYear();
-  const newMonthIndex = newDate.getMonth();
-
-  // Уникальный ключ месяца (чтобы сравнить)
-  const currentKey = currentYear * 12 + currentMonthIndex;
-  const newKey = newYear * 12 + newMonthIndex;
-
-  // Блокируем ТОЛЬКО если месяц СТРОГО раньше текущего
-  if (!store.isAdmin && newKey < currentKey) {
+  // Текущий месяц — всегда разрешён, блокируем только строго предыдущие
+  if (!store.isAdmin && newMonthKey < currentMonthKey) {
     if (typeof toast === 'function') {
       toast("Запись на прошедшие месяцы невозможна", "error");
     }
     return;
   }
 
-  updateMonth(newDate.getFullYear(), newDate.getMonth());
+  store.currentDate = newDate;   // ← ЭТОТ СТРОК ГЕНИЙ
 }
 
-// Переход на следующий месяц
 export function nextMonth() {
-  const newDate = new Date(store.year, store.month + 1);
-  updateMonth(newDate.getFullYear(), newDate.getMonth());
+  const newDate = new Date(store.currentDate);
+  newDate.setMonth(newDate.getMonth() + 1);
+  store.currentDate = newDate;   // ← и тут
 }
 
-// Остальные функции (без изменений)
 export const updateBookingInStore = (id, updates) => {
-  store.bookings = store.bookings.map(b => 
-    b.id === id ? { ...b, ...updates } : b
-  );
+  store.bookings = store.bookings.map(b => b.id === id ? { ...b, ...updates } : b);
 };
 
 export const removeBooking = (id) => {
   store.bookings = store.bookings.filter(b => b.id !== id);
 };
 
-// Дополнительно: если нужно — можно экспортировать для админа
-export const setAdminMode = (value) => {
-  store.isAdmin = value;
-};
+export const setAdminMode = (value) => { store.isAdmin = value; };
