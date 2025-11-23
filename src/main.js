@@ -99,3 +99,20 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Покажите свою кнопку "Установить"
+  document.getElementById('installButton').style.display = 'block';
+});
+
+// При клике на кнопку:
+document.getElementById('installButton').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') console.log('Установлено');
+    deferredPrompt = null;
+  }
+});
