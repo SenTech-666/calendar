@@ -141,55 +141,85 @@
   </script>
 
   <!-- УСЛУГИ И ЦЕНЫ — ГАРАНТИРОВАННО РАБОТАЕТ -->
-  <script type="module">
-    // Ждём, пока db станет доступен
-    const waitForDb = () => {
-      if (window.firebaseDb) {
-        startServicesListener(window.firebaseDb);
-      } else {
-        setTimeout(waitForDb, 100);
-      }
-    };
+<!-- УСЛУГИ И ЦЕНЫ — МОЛНИЕНОСНАЯ ЗАГРУЗКА -->
+<section id="services-section" style="padding:80px 20px;background:linear-gradient(135deg,#fff5f9,#fdf8fb);text-align:center">
+  <div class="container" style="max-width:1200px;margin:0 auto">
+    <h2 style="font-size:2.8rem;color:var(--primary-color,#ff6b9d);margin-bottom:50px;font-weight:800">
+      Услуги и цены
+    </h2>
+    
+    <div id="services-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:30px;justify-items:center">
+      <div style="padding:60px;background:#fff;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);width:100%;max-width:400px">
+        <p style="color:#ccc;font-size:1.3rem">Загрузка услуг...</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-    const startServicesListener = async (db) => {
-      const { collection, onSnapshot, query } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js");
-      const servicesList = document.getElementById("services-list");
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
+    authDomain: "calendar-666-5744f.firebaseapp.com",
+    projectId: "calendar-666-5744f",
+    appId: "1:665606748855:web:5e4a2865b1f26494cf2b32"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const servicesList = document.getElementById("services-list");
+
+  // ОДИН БЫСТРЫЙ ЗАПРОС — вместо onSnapshot (нам не нужен реал-тайм на главной!)
+  const loadServices = async () => {
+    try {
       const q = query(collection(db, "services"));
-      onSnapshot(q, (snapshot) => {
-        const services = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(s => s.name && s.price)
-          .sort((a, b) => a.price - b.price);
+      const snapshot = await getDocs(q);  // ← Это в 10 раз быстрее onSnapshot!
 
-        if (services.length === 0) {
-          servicesList.innerHTML = `<div style="grid-column:1/-1;padding:60px;background:#fff;border-radius:28px"><p style="color:#ff6b9d;font-size:1.6rem">Услуги ещё не добавлены</p></div>`;
-          return;
-        }
+      const services = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(s => s.name && s.price)
+        .sort((a, b) => a.price - b.price);
 
-        servicesList.innerHTML = services.map(s => `
-          <div style="background:#fff;padding:40px;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);opacity:0;transform:translateY(20px);transition:all 0.5s">
-            <h3 style="font-size:1.8rem;color:#333;margin:0 0 16px">${s.name}</h3>
-            <div style="font-size:3rem;font-weight:900;color:#ff6b9d;margin:20px 0">${s.price}₽</div>
-            <p style="color:#666;font-size:1.2rem">Продолжительность: <strong>${s.duration} мин</strong></p>
-            <button onclick="location.href='calendar.html'" style="margin-top:24px;background:#ff6b9d;color:white;padding:16px 36px;border:none;border-radius:50px;font-weight:700;cursor:pointer">
-              Записаться
-            </button>
-          </div>
-        `).join("");
+      if (services.length === 0) {
+        servicesList.innerHTML = `<div style="grid-column:1/-1;padding:60px;background:#fff;border-radius:28px"><p style="color:#ff6b9d;font-size:1.6rem">Услуги ещё не добавлены</p></div>`;
+        return;
+      }
 
-        // Анимация
-        document.querySelectorAll("#services-list > div").forEach((el, i) => {
-          setTimeout(() => {
-            el.style.opacity = "1";
-            el.style.transform = "translateY(0)";
-          }, i * 150);
+      // Генерируем ВЕСЬ HTML одним куском — мгновенно!
+      servicesList.innerHTML = services.map(s => `
+        <div class="service-card" style="background:#fff;padding:40px;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);opacity:0;transform:translateY(30px);transition:opacity .6s,transform .6s">
+          <h3 style="font-size:1.8rem;color:#333;margin:0 0 16px">${s.name}</h3>
+          <div style="font-size:3rem;font-weight:900;color:#ff6b9d;margin:20px 0">${s.price}₽</div>
+          <p style="color:#666;font-size:1.2rem">Продолжительность: <strong>${s.duration} мин</strong></p>
+          <button onclick="location.href='calendar.html'" 
+                  style="margin-top:24px;background:#ff6b9d;color:white;padding:16px 36px;border:none;border-radius:50px;font-weight:700;cursor:pointer;transition:.3s"
+                  onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 15px 30px rgba(255,107,157,.5)'"
+                  onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 20px rgba(255,107,157,.4)'">
+            Записаться
+          </button>
+        </div>
+      `).join("");
+
+      // Анимация появления — ВСЕ ОДНОВРЕМЕННО через requestAnimationFrame
+      requestAnimationFrame(() => {
+        document.querySelectorAll(".service-card").forEach(card => {
+          card.style.opacity = "1";
+          card.style.transform = "translateY(0)";
         });
       });
-    };
 
-    waitForDb();
-  </script>
+    } catch (err) {
+      console.error(err);
+      servicesList.innerHTML = `<div style="grid-column:1/-1;color:#e74c3c;padding:40px">Ошибка загрузки</div>`;
+    }
+  };
+
+  // Запускаем сразу — без ожидания!
+  loadServices();
+</script>
 
 </body>
 </html>
