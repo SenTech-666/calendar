@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Маникюр • Анна</title>
+  <meta name="description" content="Запись на маникюр к Василики — идеальный маникюр в Москве">
   <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all'">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
   <!-- PWA -->
@@ -43,7 +44,7 @@
     </div>
   </section>
 
-  <!-- УСЛУГИ И ЦЕНЫ — РАБОТАЕТ НА 100% -->
+  <!-- УСЛУГИ И ЦЕНЫ -->
   <section id="services-section" style="padding:80px 20px;background:linear-gradient(135deg,#fff5f9,#fdf8fb);text-align:center">
     <div class="container">
       <h2 style="font-size:2.8rem;color:var(--primary-color);margin-bottom:50px;font-weight:800">Услуги и цены</h2>
@@ -59,12 +60,12 @@
     <div class="container">
       <h2>Мои работы</h2>
       <div class="grid">
-        <div class="photo" style="background-image:url('./assets/photo1.jpg.jpg')"></div>
-        <div class="photo" style="background-image:url('./assets/photo2.jpg.jpg')"></div>
-        <div class="photo" style="background-image:url('./assets/photo3.jpg.jpg')"></div>
-        <div class="photo" style="background-image:url('./assets/photo4.jpg.jpg')"></div>
-        <div class="photo" style="background-image:url('./assets/photo5.jpg.jpg')"></div>
-        <div class="photo" style="background-image:url('./assets/photo6.jpg.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo1.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo2.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo3.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo4.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo5.jpg')"></div>
+        <div class="photo" style="background-image:url('./assets/photo6.jpg')"></div>
       </div>
     </div>
   </section>
@@ -73,13 +74,13 @@
     <div class="container">
       <button id="installButton" style="display:none">Установить приложение</button>
       <p>Москва • Работаю по записи</p>
-      <p>Instagram: <a href="https://instagram.com/your_nick" target="_blank">@your_nick</a></p>
+      <p>Instagram: <a href="https://instagram.com/your_nick" target="_blank" rel="noopener">@your_nick</a></p>
     </div>
   </footer>
 
-  <div id="modal-root"></div>
+  <div id="modal-root" aria-hidden="true"></div>
 
-  <!-- Firebase SDK (обязательно все модули) -->
+  <!-- 1. ИНИЦИАЛИЗАЦИЯ FIREBASE + AUTH -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
@@ -96,36 +97,33 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Делаем db доступным глобально для всех скриптов
+    // Делаем db доступным для второго скрипта
     window.firebaseDb = db;
+    window.firebaseApp = app; // на всякий случай
 
     // Кнопки
     document.getElementById("goToCalendar").onclick = () => location.href = "calendar.html";
 
     document.getElementById("adminLogin").onclick = () => {
-      if (auth.currentUser) {
-        signOut(auth);
-        return;
-      }
-      // Модалка входа (упрощённая)
+      if (auth.currentUser) { signOut(auth); return; }
       document.getElementById("modal-root").innerHTML = `
-        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999">
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999" role="dialog" aria-modal="true">
           <div style="background:white;padding:30px;border-radius:20px;width:90%;max-width:400px">
             <h3 style="margin:0 0 20px;color:#ff6b9d">Вход для мастера</h3>
-            <input type="email" id="loginEmail" placeholder="admin@example.com" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px">
-            <input type="password" id="loginPass" placeholder="пароль" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px">
+            <input type="email" id="loginEmail" placeholder="admin@example.com" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px" required>
+            <input type="password" id="loginPass" placeholder="пароль" style="width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:12px" required>
             <div style="display:flex;gap:10px;margin-top:20px">
-              <button onclick="this.closest('#modal-root').innerHTML=''" style="flex:1;padding:12px;background:#ccc;border:none;border-radius:12px">Отмена</button>
-              <button onclick="login()" style="flex:1;padding:12px;background:#ff6b9d;color:white;border:none;border-radius:12px">Войти</button>
+              <button onclick="document.getElementById('modal-root').innerHTML=''" style="flex:1;padding:12px;background:#ccc;border:none;border-radius:12px">Отмена</button>
+              <button onclick="loginMaster()" style="flex:1;padding:12px;background:#ff6b9d;color:white;border:none;border-radius:12px">Войти</button>
             </div>
           </div>
-        </div>
-      `;
+        </div>`;
     };
 
-    window.login = async () => {
-      const email = document.getElementById("loginEmail").value;
-      const pass = document.getElementById("loginPass").value;
+    window.loginMaster = async () => {
+      const email = document.getElementById("loginEmail")?.value.trim();
+      const pass = document.getElementById("loginPass")?.value;
+      if (!email || !pass) return alert("Заполните все поля");
       try {
         await signInWithEmailAndPassword(auth, email, pass);
         document.getElementById("modal-root").innerHTML = "";
@@ -140,86 +138,68 @@
     });
   </script>
 
-  <!-- УСЛУГИ И ЦЕНЫ — ГАРАНТИРОВАННО РАБОТАЕТ -->
-<!-- УСЛУГИ И ЦЕНЫ — МОЛНИЕНОСНАЯ ЗАГРУЗКА -->
-<section id="services-section" style="padding:80px 20px;background:linear-gradient(135deg,#fff5f9,#fdf8fb);text-align:center">
-  <div class="container" style="max-width:1200px;margin:0 auto">
-    <h2 style="font-size:2.8rem;color:var(--primary-color,#ff6b9d);margin-bottom:50px;font-weight:800">
-      Услуги и цены
-    </h2>
-    
-    <div id="services-list" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:30px;justify-items:center">
-      <div style="padding:60px;background:#fff;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);width:100%;max-width:400px">
-        <p style="color:#ccc;font-size:1.3rem">Загрузка услуг...</p>
-      </div>
-    </div>
-  </div>
-</section>
+  <!-- 2. ЗАГРУЗКА УСЛУГ — ЖДЁТ, ПОКА FIREBASE БУДЕТ ГОТОВ -->
+  <script type="module">
+    import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    const servicesList = document.getElementById("services-list");
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCr08aVXswvpjwwLvtSbpBnPhE8dv3HWdM",
-    authDomain: "calendar-666-5744f.firebaseapp.com",
-    projectId: "calendar-666-5744f",
-    appId: "1:665606748855:web:5e4a2865b1f26494cf2b32"
-  };
+    const loadServices = async () => {
+      // Ждём, пока window.firebaseDb появится (максимум 5 секунд)
+      let db = window.firebaseDb;
+      let attempts = 0;
+      while (!db && attempts < 50) {
+        await new Promise(r => setTimeout(r, 100));
+        db = window.firebaseDb;
+        attempts++;
+      }
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  const servicesList = document.getElementById("services-list");
-
-  // ОДИН БЫСТРЫЙ ЗАПРОС — вместо onSnapshot (нам не нужен реал-тайм на главной!)
-  const loadServices = async () => {
-    try {
-      const q = query(collection(db, "services"));
-      const snapshot = await getDocs(q);  // ← Это в 10 раз быстрее onSnapshot!
-
-      const services = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(s => s.name && s.price)
-        .sort((a, b) => a.price - b.price);
-
-      if (services.length === 0) {
-        servicesList.innerHTML = `<div style="grid-column:1/-1;padding:60px;background:#fff;border-radius:28px"><p style="color:#ff6b9d;font-size:1.6rem">Услуги ещё не добавлены</p></div>`;
+      if (!db) {
+        servicesList.innerHTML = `<div style="grid-column:1/-1;color:#e74c3c;padding:40px;background:#fff;border-radius:28px">Нет подключения к базе данных</div>`;
         return;
       }
 
-      // Генерируем ВЕСЬ HTML одним куском — мгновенно!
-      servicesList.innerHTML = services.map(s => `
-        <div class="service-card" style="background:#fff;padding:40px;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);opacity:0;transform:translateY(30px);transition:opacity .6s,transform .6s">
-          <h3 style="font-size:1.8rem;color:#333;margin:0 0 16px">${s.name}</h3>
-          <div style="font-size:3rem;font-weight:900;color:#ff6b9d;margin:20px 0">${s.price}₽</div>
-          <p style="color:#666;font-size:1.2rem">Продолжительность: <strong>${s.duration} мин</strong></p>
-          <button onclick="location.href='calendar.html'" 
-                  style="margin-top:24px;background:#ff6b9d;color:white;padding:16px 36px;border:none;border-radius:50px;font-weight:700;cursor:pointer;transition:.3s"
-                  onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 15px 30px rgba(255,107,157,.5)'"
-                  onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 20px rgba(255,107,157,.4)'">
-            Записаться
-          </button>
-        </div>
-      `).join("");
+      try {
+        const snapshot = await getDocs(query(collection(db, "services")));
+        const services = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(s => s.name && s.price && s.duration)
+          .sort((a, b) => a.price - b.price);
 
-      // Анимация появления — ВСЕ ОДНОВРЕМЕННО через requestAnimationFrame
-      requestAnimationFrame(() => {
-        document.querySelectorAll(".service-card").forEach(card => {
-          card.style.opacity = "1";
-          card.style.transform = "translateY(0)";
+        if (services.length === 0) {
+          servicesList.innerHTML = `<div style="grid-column:1/-1;padding:60px;background:#fff;border-radius:28px"><p style="color:#ff6b9d;font-size:1.6rem;font-weight:600">Услуги ещё не добавлены</p></div>`;
+          return;
+        }
+
+        servicesList.innerHTML = services.map(s => `
+          <div class="service-card" style="background:#fff;padding:40px;border-radius:28px;box-shadow:0 15px 40px rgba(255,107,157,0.15);opacity:0;transform:translateY(30px);transition:all .6s ease-out">
+            <h3 style="font-size:1.8rem;color:#333;margin:0 0 16px">${s.name}</h3>
+            <div style="font-size:3rem;font-weight:900;color:#ff6b9d;margin:20px 0">${s.price}₽</div>
+            <p style="color:#666;font-size:1.2rem;margin-bottom:20px">Продолжительность: <strong>${s.duration} мин</strong></p>
+            <button onclick="location.href='calendar.html'" 
+                    style="background:#ff6b9d;color:white;padding:16px 36px;border:none;border-radius:50px;font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 8px 20px rgba(255,107,157,.4)"
+                    onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 15px 30px rgba(255,107,157,.5)'"
+                    onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 8px 20px rgba(255,107,157,.4)'">
+              Записаться
+            </button>
+          </div>
+        `).join("");
+
+        requestAnimationFrame(() => {
+          document.querySelectorAll(".service-card").forEach(c => {
+            c.style.opacity = "1";
+            c.style.transform = "translateY(0)";
+          });
         });
-      });
 
-    } catch (err) {
-      console.error(err);
-      servicesList.innerHTML = `<div style="grid-column:1/-1;color:#e74c3c;padding:40px">Ошибка загрузки</div>`;
-    }
-  };
+      } catch (err) {
+        console.error(err);
+        servicesList.innerHTML = `<div style="grid-column:1/-1;color:#e74c3c;padding:40px;background:#fff;border-radius:28px">Ошибка загрузки услуг</div>`;
+      }
+    };
 
-  // Запускаем сразу — без ожидания!
-  loadServices();
-</script>
+    loadServices();
+  </script>
 
 </body>
 </html>
