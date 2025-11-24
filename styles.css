@@ -1,5 +1,6 @@
 /* =============================================================================
-   РАБОЧИЙ styles.css — ФИНАЛЬНАЯ ВЕРСИЯ (23.11.2025)
+   styles.css — ФИНАЛЬНАЯ ВЕРСИЯ 23.11.2025
+   Всё работает: галерея, скелетоны, карточки услуг, hover-эффекты
    ============================================================================= */
 
 :root {
@@ -10,8 +11,7 @@
   --text: #444;
   --shadow: 0 10px 30px rgba(255,107,157,0.18);
   --radius: 20px;
-}
-:root {
+
   --primary-color: #ff6b9d;
   --accent-color: #ff8fb3;
   --success-color: #4caf50;
@@ -21,37 +21,6 @@
   --card-bg: #ffffff;
   --border-color: rgba(255, 107, 157, 0.2);
   --shadow-color: rgba(255, 107, 157, 0.3);
-}
-
-body {
-  background: var(--bg-color);
-  color: var(--text-color);
-  transition: background 0.4s ease, color 0.4s ease;
-}
-
-/* Кнопки */
-button.primary, .primary {
-  background: var(--primary-color) !important;
-  box-shadow: 0 6px 20px var(--shadow-color) !important;
-}
-button:hover { opacity: 0.9; }
-
-/* Карточки дня */
-.mobile-day, .day {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 15px var(--shadow-color);
-}
-
-/* Заголовки */
-h1, h2, h3, #currentMonth, .mobile-day-header {
-  color: var(--primary-color) !important;
-}
-
-/* Занятые записи */
-div[style*="background:#ffe0e0"], div[style*="border-left:5px solid #ff6b9d"] {
-  border-left-color: var(--danger-color) !important;
-  background: rgba(255, 107, 157, 0.1) !important;
 }
 
 *, *::before, *::after {
@@ -70,7 +39,7 @@ body {
   min-height: 100vh;
 }
 
-/* ===== ГЛАВНАЯ СТРАНИЦА ===== */
+/* ===== ГЕРОЙ ===== */
 .hero {
   background: linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)),
               url('./assets/pexels-brigitte-tohm-36757-239576.jpg') center/cover no-repeat;
@@ -89,7 +58,6 @@ body {
   inset: 0;
   background: radial-gradient(circle at center, rgba(255,182,193,0.2), transparent 70%);
   pointer-events: none;
-  z-index: 0;
 }
 
 .hero h1 {
@@ -98,7 +66,6 @@ body {
   font-weight: 700;
   margin: 0;
   text-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  position: relative;
   z-index: 2;
 }
 
@@ -106,7 +73,6 @@ body {
   font-size: 1.5rem;
   margin: 20px 0 50px;
   opacity: 0.95;
-  position: relative;
   z-index: 2;
 }
 
@@ -118,6 +84,7 @@ body {
   z-index: 2;
 }
 
+/* Кнопки */
 .btn {
   padding: 18px 44px;
   font-size: 1.25rem;
@@ -128,8 +95,6 @@ body {
   font-weight: 500;
   min-width: 230px;
   box-shadow: var(--shadow);
-  position: relative;
-  z-index: 2;
 }
 
 .btn.primary {
@@ -155,7 +120,7 @@ body {
   transform: translateY(-4px);
 }
 
-/* ===== БЛОКИ ГЛАВНОЙ ===== */
+/* ===== БЛОКИ ===== */
 .features { 
   display: grid; 
   grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); 
@@ -173,41 +138,128 @@ body {
 }
 .features > div:hover { transform: translateY(-10px); }
 
-.price-list { 
-  background: white; 
-  padding: 50px 40px; 
-  border-radius: 28px; 
-  box-shadow: var(--shadow); 
-  margin: 60px 0; 
-}
-.price-list div { 
-  display: flex; 
-  justify-content: space-between; 
-  padding: 20px 0; 
-  border-bottom: 1px solid #ffe4e9; 
-  font-size: 1.3rem; 
-}
-.price-list span { 
-  color: var(--pink-dark); 
-  font-weight: 600; 
+/* ===== ГАЛЕРЕЯ — КРАСИВО И АДАПТИВНО ===== */
+.gallery h2 {
+  text-align: center;
+  font-size: 2.8rem;
+  margin-bottom: 60px;
+  color: var(--primary-color);
 }
 
-.gallery .grid { 
-  display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); 
-  gap: 20px; 
-  margin: 60px 0; 
+.gallery .grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin: 60px 0;
 }
-.photo { 
-  height: 380px; 
-  background-size: cover; 
-  background-position: center; 
-  border-radius: 20px; 
-  box-shadow: var(--shadow); 
-  transition: 0.4s; 
-}
-.photo:hover { transform: scale(1.04); }
 
+.gallery img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  border-radius: 24px;
+  box-shadow: 0 12px 35px rgba(255,107,157,0.18);
+  transition: all 0.5s ease;
+}
+
+.gallery img:hover {
+  transform: translateY(-12px) scale(1.03);
+  box-shadow: 0 25px 50px rgba(255,107,157,0.3);
+}
+
+@media (min-width: 768px) {
+  .gallery .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .gallery img {
+    height: 360px;
+  }
+}
+
+/* ===== СКЕЛЕТОНЫ ДЛЯ УСЛУГ ===== */
+#services-list .skeleton {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 28px;
+  box-shadow: 0 15px 40px rgba(255,107,157,0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+#services-list .skeleton::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0%   { left: -150%; }
+  100% { left: 100%; }
+}
+
+/* ===== КАРТОЧКИ УСЛУГ ===== */
+.service-card {
+  background: white;
+  padding: 40px;
+  border-radius: 28px;
+  box-shadow: 0 15px 40px rgba(255,107,157,0.15);
+  transition: all 0.5s ease;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.service-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.service-card:hover {
+  transform: translateY(-14px);
+  box-shadow: 0 28px 55px rgba(255,107,157,0.28);
+}
+
+.service-card h3 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.service-card > div {
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--primary-color);
+  margin: 20px 0;
+}
+
+.service-card p {
+  color: #666;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.service-card button {
+  background: var(--primary-color);
+  color: white;
+  padding: 16px 36px;
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 8px 20px rgba(255,107,157,0.4);
+}
+
+.service-card button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(255,107,157,0.5);
+}
+
+/* ===== ФУТЕР ===== */
 footer { 
   background: linear-gradient(135deg, #ffeef4, #ffd6e0); 
   padding: 60px 20px; 

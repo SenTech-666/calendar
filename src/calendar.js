@@ -1,4 +1,4 @@
-// src/calendar.js — ФИНАЛЬНАЯ ВЕРСИЯ: ВСЁ МЕНЯЕТ ЦВЕТ ПОД АДМИНОМ (23.11.2025)
+// src/calendar.js — ФИНАЛЬНАЯ ВЕРСИЯ С РАБОЧИМ ОТОБРАЖЕНИЕМ СВОИХ ЗАПИСЕЙ (24.11.2025)
 
 import { store, subscribe } from "./store.js";
 
@@ -9,9 +9,9 @@ const getCurrentDate = () => store.currentDate || new Date();
 const themes = {
   pink:   { p: "#ff6b9d", a: "#ff8fb3", s: "#4caf50", d: "#ff6b9d", bg: "#fff8fb", text: "#333333", card: "#ffffff", border: "rgba(255,107,157,0.15)", shadow: "rgba(255,107,157,0.25)" },
   purple: { p: "#9c27b0", a: "#c969d7", s: "#66bb6a", d: "#e91e63", bg: "#f8f4fc", text: "#333333", card: "#ffffff", border: "rgba(156,39,176,0.15)", shadow: "rgba(156,39,176,0.25)" },
-  teal:   { p: "#00bcd4", a: "#4dd0e1", s: "#66bb6a", d: "#ff5252", bg: "#158c99ff", text: "#333333", card: "#a82323ff", border: "rgba(0,188,212,0.15)", shadow: "rgba(0,188,212,0.25)" },
+  teal:   { p: "#00bcd4", a: "#4dd0e1", s: "#66bb6a", d: "#ff5252", bg: "#f0fffe", text: "#333333", card: "#ffffff", border: "rgba(0,188,212,0.15)", shadow: "rgba(0,188,212,0.25)" },
   peach:  { p: "#ff8a65", a: "#ffb74d", s: "#81c784", d: "#e57373", bg: "#fff8f5", text: "#333333", card: "#ffffff", border: "rgba(255,138,101,0.15)", shadow: "rgba(255,138,101,0.25)" },
-  dark:   { p: "#e91e63", a: "#f06292", s: "#66bb6a", d: "#a14746ff", bg: "#121212", text: "#000000ff", card: "#1e1e1e", border: "rgba(233,30,99,0.2)", shadow: "rgba(233,30,99,0.3)" },
+  dark:   { p: "#e91e63", a: "#f06292", s: "#66bb6a", d: "#ff5252", bg: "#121212", text: "#e0e0e0", card: "#1e1e1e", border: "rgba(233,30,99,0.2)", shadow: "rgba(233,30,99,0.3)" },
   light:  { p: "#ec407a", a: "#f06292", s: "#66bb6a", d: "#ff6b9d", bg: "#ffffff", text: "#333333", card: "#ffffff", border: "rgba(236,64,122,0.15)", shadow: "rgba(236,64,122,0.25)" }
 };
 
@@ -33,7 +33,6 @@ window.applyTheme = (name) => {
   document.body.style.background = t.bg;
   document.body.style.color = t.text;
 
-  // Обновляем кнопки
   const upBtn = document.getElementById("scrollToTopBtn");
   const paletteBtn = document.getElementById("themePickerBtn");
   if (upBtn) upBtn.style.background = t.p;
@@ -45,6 +44,36 @@ window.applyTheme = (name) => {
 const loadSavedTheme = () => {
   const saved = localStorage.getItem('selectedTheme');
   if (saved && themes[saved]) window.applyTheme(saved);
+};
+
+// ======================== FINGERPRINTJS — УНИКАЛЬНЫЙ ID ДАЖЕ В ИНКОГНИТО ========================
+let clientId = localStorage.getItem('clientId');
+
+const initClientId = async () => {
+  if (clientId) return clientId;
+
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    clientId = result.visitorId;
+    localStorage.setItem('clientId', clientId);
+    console.log("Client ID сгенерирован (FingerprintJS):", clientId);
+  } catch (e) {
+    clientId = 'fallback_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('clientId', clientId);
+    console.warn("FingerprintJS не загрузился → fallback ID:", clientId);
+  }
+  return clientId;
+};
+
+// Запускаем сразу — клиент будет готов к моменту рендера
+initClientId();
+
+// ======================== ПРОВЕРКА СВОЕЙ ЗАПИСИ — ТОЛЬКО ПО CLIENTID ========================
+const isCurrentUserBooking = (booking) => {
+  if (store.isAdmin) return true;
+  if (!clientId || !booking.clientId) return false;
+  return booking.clientId === clientId;
 };
 
 // ======================== КНОПКА ПАЛИТРЫ (только админ) ========================
@@ -124,23 +153,6 @@ const initScrollToTopButton = () => {
   });
 };
 
-// ======================== ПРОВЕРКА СВОЕЙ ЗАПИСИ ========================
-const isCurrentUserBooking = (booking) => {
-  if (store.isAdmin) return true;
-  try {
-    const phone = localStorage.getItem('clientPhone');
-    const name = localStorage.getItem('clientName');
-    if (!phone && !name) return false;
-    if (phone && booking.clientPhone === phone) return true;
-    if (name && booking.clientName) {
-      const n1 = name.trim().toLowerCase();
-      const n2 = booking.clientName.trim().toLowerCase();
-      return n1.includes(n2) || n2.includes(n1);
-    }
-    return false;
-  } catch { return false; }
-};
-
 // ======================== РЕНДЕР КАЛЕНДАРЯ ========================
 export function renderCalendar() {
   const calendarEl = document.getElementById("calendar");
@@ -165,13 +177,13 @@ export function renderCalendar() {
 
   calendarEl.innerHTML = "";
 
-  // Инициализация всех фич
+  // Инициализация фич
   loadSavedTheme();
   if (isMobile) initScrollToTopButton();
   if (store.isAdmin) createThemePicker();
 
   if (!isMobile) {
-    // Десктоп
+    // Десктоп версия
     daysOfWeek.forEach(d => {
       const h = document.createElement("div");
       h.textContent = d;
@@ -189,18 +201,19 @@ export function renderCalendar() {
       if (isPast) dayEl.classList.add("past");
 
       const bookings = store.bookings.filter(b => b.date === dateISO && b.time !== "00:00" && b.blocked !== true);
+
       const html = bookings.length === 0
-        ? `<div style="color:var(--primary-color);font-weight:600">Свободно</div>`
+        ? `<div style="color:var(--primary-color);font-weight:600">Свободно весь день</div>`
         : bookings.map(b => isCurrentUserBooking(b)
-            ? `<div style="margin:6px 0;padding:10px;background:#e8f5e9;border-radius:12px;border-left:4px solid var(--success-color);">
-                 <strong>${b.time}</strong> — ${b.clientName || "Вы"} ${store.isAdmin ? "<br>Тел: " + b.clientPhone : "(ваша запись)"}
+            ? `<div style="margin:8px 0;padding:12px;background:#e8f5e9;border-radius:14px;border-left:5px solid var(--success-color);font-size:0.95rem;">
+                 <strong>${b.time}</strong> — Ваша запись${store.isAdmin ? "<br><small>Имя: " + b.clientName + "<br>Тел: " + b.clientPhone + "</small>" : ""}
                </div>`
-            : `<div style="margin:6px 0;padding:10px;background:rgba(255,107,157,0.1);border-radius:12px;color:#999;border-left:4px solid var(--danger-color);">
+            : `<div style="margin:8px 0;padding:12px;background:rgba(255,107,157,0.08);border-radius:14px;color:#aaa;font-size:0.95rem;">
                  <strong>${b.time}</strong> — Занято
                </div>`
         ).join("");
 
-      dayEl.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${day}</div>${html}`;
+      dayEl.innerHTML = `<div style="font-weight:700;margin-bottom:10px;font-size:1.1rem">${day}</div>${html}`;
       dayEl.onclick = () => { if (isPast && !store.isAdmin) return; import("./components.js").then(m => m.showBookingModal(dateISO)); };
       calendarEl.appendChild(dayEl);
     }
@@ -214,13 +227,14 @@ export function renderCalendar() {
       const dayName = daysOfWeek[dayOfWeekIndex];
 
       const bookings = store.bookings.filter(b => b.date === dateISO && b.time !== "00:00" && b.blocked !== true);
+
       const html = bookings.length === 0
-        ? `<div style="color:var(--primary-color);font-weight:600;font-size:1.2rem">Полностью свободно</div>`
+        ? `<div style="color:var(--primary-color);font-weight:600;font-size:1.3rem">Свободно</div>`
         : bookings.map(b => isCurrentUserBooking(b)
-            ? `<div style="margin:12px 0;padding:16px;background:#e8f5e9;border-radius:18px;border-left:6px solid var(--success-color);">
-                 <strong>${b.time}</strong> — ${b.clientName || "Вы"} (ваша запись)${store.isAdmin ? "<br>Тел: " + b.clientPhone : ""}
+            ? `<div style="margin:14px 0;padding:18px;background:#e8f5e9;border-radius:20px;border-left:6px solid var(--success-color);">
+                 <strong>${b.time}</strong> — Ваша запись${store.isAdmin ? "<br><small>Имя: " + b.clientName + "<br>Тел: " + b.clientPhone + "</small>" : ""}
                </div>`
-            : `<div style="margin:12px 0;padding:16px;background:rgba(255,107,157,0.1);border-radius:18px;color:#999;border-left:6px solid var(--danger-color);">
+            : `<div style="margin:14px 0;padding:18px;background:rgba(255,107,157,0.08);border-radius:20px;color:#999;">
                  <strong>${b.time}</strong> — Занято
                </div>`
         ).join("");
@@ -228,12 +242,13 @@ export function renderCalendar() {
       const mobileDay = document.createElement("div");
       mobileDay.className = "mobile-day";
       if (dateISO === todayISO) mobileDay.classList.add("today");
+
       mobileDay.innerHTML = `
         <div class="mobile-day-header" style="color:var(--primary-color);">
           ${day} ${currentDate.toLocaleDateString("ru-RU", { month: "long" }).slice(0, 3)} • ${dayName}
           ${dateISO === todayISO ? " • Сегодня" : ""}
         </div>
-        <div style="padding:20px">${html}</div>
+        <div style="padding:20px 16px">${html}</div>
       `;
       mobileDay.onclick = () => import("./components.js").then(m => m.showBookingModal(dateISO));
       calendarEl.appendChild(mobileDay);
