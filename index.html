@@ -27,6 +27,9 @@
   <!-- FingerprintJS — решает проблему "своих записей" в инкогнито -->
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
+  <!-- 2GIS Map API (бесплатно, без ключей) -->
+  <script src="https://maps.api.2gis.ru/2.0/loader.js?pkg=full"></script>
+
   <style>
     :root { --primary: #ff6b9d; --shadow: rgba(255,107,157,0.15); }
     .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
@@ -59,6 +62,32 @@
       opacity: 1;
       transform: translateY(0);
     }
+
+    /* === НОВАЯ КАРТА 2GIS === */
+    .map-section {
+      padding: 100px 20px;
+      background: #fff;
+      text-align: center;
+    }
+    .map-section h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem;
+      color: var(--primary);
+      margin-bottom: 50px;
+    }
+    #dgis-map {
+      width: 100%;
+      height: 500px;
+      border-radius: 28px;
+      box-shadow: 0 20px 50px var(--shadow);
+      overflow: hidden;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    @media (max-width: 768px) {
+      #dgis-map { height: 400px; }
+      .map-section h2 { font-size: 2.2rem; }
+    }
   </style>
 </head>
 <body>
@@ -74,17 +103,33 @@
     </div>
   </header>
 
-  <section class="about">
-    <div class="container">
-      <h2>Почему выбирают меня</h2>
-      <div class="features">
-        <div>Стерильность 100%</div>
-        <div>Только качественные материалы</div>
-        <div>Более 5 лет опыта</div>
-        <div>Индивидуальный подход</div>
+<section class="about">
+  <div class="container">
+    <h2>Почему выбирают меня</h2>
+    <div class="features">
+      <div>
+        <div class="icon">Shield</div>
+        <h3>Стерильность 100%</h3>
+        <p>Одноразовые инструменты и крафт-пакеты</p>
+      </div>
+      <div>
+        <div class="icon">Sparkles</div>
+        <h3>Только премиум материалы</h3>
+        <p>Luxe, Kodi, Luna — всё оригинал</p>
+      </div>
+      <div>
+        <div class="icon">Trophy</div>
+        <h3>Более 5 лет опыта</h3>
+        <p>Тысячи довольных клиенток</p>
+      </div>
+      <div>
+        <div class="icon">Heart</div>
+        <h3>Индивидуальный подход</h3>
+        <p>Подберу дизайн именно под тебя</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
   <!-- УСЛУГИ -->
   <section id="services-section" style="padding:80px 20px;background:linear-gradient(135deg,#fff5f9,#fdf8fb);text-align:center">
@@ -102,7 +147,15 @@
     </div>
   </section>
 
-  <!-- ГАЛЕРЕЯ — теперь стилизуется через styles.css -->
+  <!-- НОВАЯ КАРТА 2GIS -->
+  <section class="map-section">
+    <div class="container">
+      <h2>Где я работаю</h2>
+      <div id="dgis-map"></div>
+    </div>
+  </section>
+
+  <!-- ГАЛЕРЕЯ -->
   <section class="gallery">
     <div class="container">
       <h2>Мои работы</h2>
@@ -186,18 +239,15 @@
 
     const servicesList = document.getElementById("services-list");
 
-    // === FINGERPRINTJS — УНИКАЛЬНЫЙ ID ДАЖЕ В ИНКОГНИТО ===
+    // === FINGERPRINTJS ===
     let clientId = localStorage.getItem('clientId');
     if (!clientId) {
       FingerprintJS.load().then(fp => {
         fp.get().then(result => {
           clientId = result.visitorId;
           localStorage.setItem('clientId', clientId);
-          console.log("Клиент ID сгенерирован:", clientId);
         });
       });
-    } else {
-      console.log("Клиент ID из кэша:", clientId);
     }
 
     // === РЕНДЕР УСЛУГ ===
@@ -250,9 +300,35 @@
       }
     };
 
-    // Запуск после инициализации Firebase
     if (window.firebaseDb) loadServices();
     else setInterval(() => window.firebaseDb && (clearInterval(this), loadServices()), 100);
+  </script>
+
+  <!-- ИНИЦИАЛИЗАЦИЯ КАРТЫ 2GIS -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (typeof DG === "undefined") {
+        console.warn("2GIS API не загрузился");
+        return;
+      }
+
+      DG.then(function () {
+        const map = DG.map('dgis-map', {
+          center: [55.7558, 37.6173],  // Замени на координаты твоего салона!
+          zoom: 16
+        });
+
+        DG.marker([55.7558, 37.6173], {
+          icon: DG.icon({
+            iconUrl: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="%23ff6b9d" stroke="white" stroke-width="4"/><circle cx="20" cy="20" r="8" fill="white"/></svg>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 40]
+          })
+        }).addTo(map)
+          .bindPopup('<b style="color:#ff6b9d">Салон Василики</b><br>Москва<br><a href="tel:+79001234567">+7 (900) 123-45-67</a>')
+          .openPopup();
+      });
+    });
   </script>
 
 </body>

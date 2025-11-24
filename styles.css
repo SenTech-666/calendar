@@ -498,3 +498,180 @@ footer {
     user-select: none;
   }
 }
+/* Карта 2GIS — стили для главной страницы */
+.map-section {
+  margin: 80px 0;
+  text-align: center;
+}
+
+#map-container h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.5rem;
+  color: var(--pink-dark);
+  margin-bottom: 40px;
+}
+
+#map {
+  width: 100%;
+  height: 500px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin: 0 auto;
+  max-width: 1000px;
+}
+
+@media (max-width: 768px) {
+  #map {
+    height: 400px;
+  }
+  
+  #map-container h2 {
+    font-size: 2rem;
+  }
+  
+  #map-container {
+    padding: 0 10px;
+  }
+}
+/* =============================================================================
+   ЕДИНЫЙ СТИЛЬ ДЛЯ ВСЕХ ОСНОВНЫХ СЕКЦИЙ: "Почему выбирают меня", "Где я работаю"
+   ============================================================================= */
+
+/* Общий стиль для больших секций с заголовком */
+.section-title {
+  padding: 100px 20px;
+  background: #fff;
+  text-align: center;
+}
+
+.section-title h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem;
+  color: var(--primary-color);
+  margin-bottom: 60px;
+  font-weight: 800;
+}
+
+/* Блок "Почему выбирают меня" — теперь как у всех */
+.about {
+  padding: 100px 20px;
+  background: #fff;
+  text-align: center;
+}
+
+.about h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem;
+  color: var(--primary-color);
+  margin-bottom: 60px;
+  font-weight: 800;
+}
+
+.about .features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.about .features > div {
+  background: white;
+  padding: 40px 30px;
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(255,107,157,0.15);
+  transition: all 0.4s ease;
+}
+
+.about .features > div:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 30px 60px rgba(255,107,157,0.25);
+}
+
+.about .features .icon {
+  width: 90px;
+  height: 90px;
+  background: linear-gradient(135deg, #ff8fa3, #ff6b9d);
+  border-radius: 50%;
+  margin: 0 auto 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  color: white;
+}
+
+.about .features h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.about .features p {
+  color: #777;
+  line-height: 1.7;
+  font-size: 1.05rem;
+}
+
+/* Карта 2GIS — обновлённые стили (в едином стиле) */
+.map-section {
+  padding: 100px 20px;
+  background: #fff;
+  text-align: center;
+}
+
+.map-section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem;
+  color: var(--primary-color);
+  margin-bottom: 60px;
+  font-weight: 800;
+}
+
+#dgis-map {
+  width: 100%;
+  height: 520px;
+  border-radius: 28px;
+  box-shadow: 0 25px 60px rgba(255,107,157,0.18);
+  overflow: hidden;
+  max-width: 1100px;
+  margin: 0 auto;
+  border: 6px solid white;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+  .section-title,
+  .about,
+  .map-section {
+    padding: 80px 15px;
+  }
+
+  .section-title h2,
+  .about h2,
+  .map-section h2 {
+    font-size: 2.3rem;
+    margin-bottom: 50px;
+  }
+
+  #dgis-map {
+    height: 420px;
+    border-radius: 24px;
+  }
+
+  .about .features {
+    gap: 30px;
+  }
+
+  .about .features > div {
+    padding: 35px 25px;
+  }
+
+  .about .features .icon {
+    width: 80px;
+    height: 80px;
+    font-size: 2.4rem;
+  }
+}
