@@ -305,31 +305,50 @@
   </script>
 
   <!-- ИНИЦИАЛИЗАЦИЯ КАРТЫ 2GIS -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      if (typeof DG === "undefined") {
-        console.warn("2GIS API не загрузился");
-        return;
-      }
+ <!-- ИНИЦИАЛИЗАЦИЯ КАРТЫ 2GIS — С КНОПКОЙ "ЗАПИСАТЬСЯ" -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof DG === "undefined") {
+      console.warn("2GIS API не загрузился");
+      return;
+    }
 
-      DG.then(function () {
-        const map = DG.map('dgis-map', {
-          center: [55.7558, 37.6173],  // Замени на координаты твоего салона!
-          zoom: 16
-        });
-
-        DG.marker([55.7558, 37.6173], {
-          icon: DG.icon({
-            iconUrl: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="%23ff6b9d" stroke="white" stroke-width="4"/><circle cx="20" cy="20" r="8" fill="white"/></svg>',
-            iconSize: [40, 40],
-            iconAnchor: [20, 40]
-          })
-        }).addTo(map)
-          .bindPopup('<b style="color:#ff6b9d">Салон Василики</b><br>Москва<br><a href="tel:+79001234567">+7 (900) 123-45-67</a>')
-          .openPopup();
+    DG.then(function () {
+      const map = DG.map('dgis-map', {
+        center: [55.7558, 37.6173],   // ← Замени на свои координаты!
+        zoom: 16
       });
+
+      const popupContent = `
+        <div style="text-align:center; padding:8px 0; font-family: 'Montserrat', sans-serif;">
+          <b style="color:#ff6b9d; font-size:1.3rem; display:block; margin-bottom:8px;">
+            Салон Василики
+          </b>
+          <span style="color:#555; font-size:0.95rem; display:block; margin-bottom:16px;">
+            Москва • Работаю по записи
+          </span>
+          <a href="calendar.html" 
+             style="display:inline-block; background:linear-gradient(135deg,#ff8fa3,#ff6b9d); color:white; padding:14px 32px; border-radius:50px; text-decoration:none; font-weight:700; font-size:1rem; box-shadow:0 8px 20px rgba(255,107,157,0.4); transition:all .3s;"
+             onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 25px rgba(255,107,157,0.5)'"
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 20px rgba(255,107,157,0.4)'">
+            Записаться онлайн
+          </a>
+        </div>
+      `;
+
+      DG.marker([55.7558, 37.6173], {
+        icon: DG.icon({
+          iconUrl: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="46" height="56" viewBox="0 0 46 56"><path fill="%23ff6b9d" d="M23,0 C10.3,0 0,10.3 0,23 0,39.7 23,56 23,56 C23,56 46,39.7 46,23 46,10.3 35.7,0 23,0 Z"/><circle cx="23" cy="23" r="12" fill="white"/></svg>',
+          iconSize: [46, 56],
+          iconAnchor: [23, 56]
+        })
+      })
+      .addTo(map)
+      .bindPopup(popupContent)
+      .openPopup();
     });
-  </script>
+  });
+</script>
 
 </body>
 </html>
